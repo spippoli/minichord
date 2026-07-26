@@ -105,6 +105,17 @@ export class MinichordDevice {
     // firmware applies every write unconditionally. The "protected" and
     // "limited access" ranges are a convention of the editor, not of the device.
     this.values[address] = value
+
+    // ...with exactly one exception. `apply_audio_parameter` runs after the
+    // store, and its `case 7` is `current_sysex_parameters[7] = version_ID`
+    // (firmware/include/sysex_handler.h), so the device silently heals the
+    // firmware-version slot. This matters: a preset load writes every address
+    // from 2 to 255, and byte 7 of a shared preset is usually 0. Without this,
+    // one preset load would leave the reported version wrong for good and every
+    // parameter gated on `introduction_version` would go inactive.
+    if (address === FIRMWARE_VERSION_ADDRESS) {
+      this.values[FIRMWARE_VERSION_ADDRESS] = this.firmwareVersion
+    }
     return null
   }
 

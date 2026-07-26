@@ -76,8 +76,9 @@ against a politer device would be wrong:
 - Flash persistence across restarts: banks live in memory and reset with the page.
 - MIDI beyond SysEx (note on/off, clock, start/stop, the rhythm engine).
 - The potentiometers, which on the real device write addresses 2–6 on their own.
-- Message loss: none was observed on the real device at any pacing (see below),
-  so there is nothing to reproduce.
+- Message loss: none was ever detected on the real device at any pacing, so
+  there is nothing to reproduce — but see the bound under Calibration before
+  reading that as a guarantee.
 
 ## Calibration
 
@@ -90,22 +91,52 @@ python3 tools/measure-device.py --json measurements.json
 
 | Quantity | Value | How |
 | --- | --- | --- |
-| Ingest rate | **0.581 ms/message** (~1720 msg/s) | slope of burst drain time over 25–800 messages, linear with no knee |
+| Ingest rate | **0.581 ms/message** (~1720 msg/s) | slope of burst drain time over 25–800 messages |
 | Dump round-trip | median **0.81 ms**, p95 1.41 ms, max 1.91 ms | 500 consecutive `(0, 0)` commands, 0 timeouts |
-| Save round-trip | **164 ms** | `(2, 0)`, timed to the unsolicited dump that follows |
-| Message loss | **0** | 0/195 across seven pacings incl. none; 0/117 probe slots in 254-message preset loads |
+| Flash write + reload | **164 ms** | a save, timed to the unsolicited dump that follows — *not* reproduced by the harness, see below |
+| Message loss | **none detected**, bounded at ~2.5%/message | 0/195 across seven pacings; 0/117 probe slots in 254-message preset loads |
 
 The ingest figure is not a browser limit — it is the firmware. `loop()` calls
 `usbMIDI.read()` exactly once per iteration, so ingest is capped at one SysEx
 per main-loop iteration, and 0.581 ms *is* that iteration.
 
-Two things the harness could not verify on hardware and that are therefore
-modelled from `firmware/src/main.cpp` alone:
+### What the numbers do not establish
 
-- **Command 3 (reset bank to defaults)** — destructive to the operator's own
-  bank, so it was never sent.
+**"Zero loss" is a detection result, not an absence proof.** T4 writes all 254
+addresses but only the ~39 unclaimed ones carry a sentinel; the other 215 are
+rewritten with the value the device already holds, so losing one leaves the
+following dump byte-identical. 117 clean probe slots bound per-message loss at
+`1 - 0.05^(1/117)` ≈ **2.5%**, which over a 254-message preset load allows up to
+about **6 silently dropped parameters**. None of the probes falls in 220–235
+either, so the rhythm bitmasks that close every burst have no coverage at all.
+Nothing was ever observed to drop, and the simulator drops nothing — but an app
+that sends a preset load unpaced should still confirm with a dump rather than
+assume. Tightening this means giving every address a detectable sentinel.
+
+**The ingest slope is a floor.** T2 sends all its messages to one *unclaimed*
+address, so `apply_audio_parameter` falls through the switch and does no work.
+A real preset load hits 254 live cases, several doing float math on audio
+objects. 0.581 ms/message is the cheapest possible message, and the ~148 ms
+preset-load budget derived from it is a lower bound. The fit is also
+leverage-heavy — n=400 and n=800 carry ~72% of the slope — so it constrains a
+knee above n=400 far better than one below it.
+
+**The 164 ms figure is not reproducible with the checked-in harness.** It never
+sends command 2, by design: nothing it does may touch flash. Re-running
+`measure-device.py` after a firmware change will refresh every row of the table
+except that one.
+
+### Modelled from source, never seen on hardware
+
+- **Command 1 (wipe) and command 3 (reset bank)** — both destructive to the
+  operator's own banks, so neither was sent. Both call `save_config(…, true)`
+  (command 1 after a `quickFormat`), the same erase-write-reload as a save, so
+  the simulator charges them the same 164 ms.
 - **The physical preset buttons** — a 90-second listening window recorded no
-  press.
+  press. They run `load_config` alone: a flash *read* with no write, so cheaper
+  than a save, but by an unknown margin. The simulator uses the 164 ms as an
+  upper bound, erring towards making a prototype build the slow-path affordance.
 
-Both follow the same `load_config` path as the commands that *were* verified to
-emit an unsolicited dump, so the risk is low, but it is untested.
+All three follow the same `load_config` path as the commands that *were*
+verified to emit an unsolicited dump, so that behaviour is low-risk; their
+timing is the untested part.

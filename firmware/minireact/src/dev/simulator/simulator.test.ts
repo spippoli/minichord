@@ -57,6 +57,22 @@ describe('MinichordDevice', () => {
     expect(dumpOf(device)[4]).toBe(512)
   })
 
+  it('heals a write to the firmware-version address, as apply_audio_parameter does', () => {
+    // sysex_handler.h `case 7` restores version_ID after the store. A preset
+    // load writes every address from 2 to 255, and byte 7 of a shared preset is
+    // usually 0 -- without the heal, the version would stay wrong for good.
+    const device = new MinichordDevice()
+    device.receive(frame(7, 0))
+    expect(dumpOf(device)[7]).toBe(SIMULATED_FIRMWARE_VERSION)
+  })
+
+  it('reports the configured firmware version, for introduction_version gating', () => {
+    const device = new MinichordDevice({ firmwareVersion: 5 })
+    expect(dumpOf(device)[7]).toBe(5)
+    device.receive(frame(7, 99))
+    expect(dumpOf(device)[7]).toBe(5)
+  })
+
   it('ignores anything that is not a 6-byte SysEx frame', () => {
     const device = new MinichordDevice()
     expect(device.receive([0xf0, 42, 0, 1, 0, 0, 0xf7])).toBeNull()
@@ -177,6 +193,38 @@ describe('MinichordSimulator', () => {
     simulator.disconnect()
     simulator.reconnect()
     expect(states).toEqual(['disconnected', 'connected'])
+  })
+
+  describe('command latency', () => {
+    /** Wall time from sending `command` to the dump it provokes. */
+    async function timeCommand(command: number, argument: number): Promise<number> {
+      const simulator = new MinichordSimulator()
+      const access = await simulator.requestAccess({ sysex: true })
+      const input = [...access.inputs.values()][0]
+      const output = [...access.outputs.values()][0]
+
+      const arrived = new Promise<number>((resolve) => {
+        const started = performance.now()
+        input.onmidimessage = () => resolve(performance.now() - started)
+      })
+      output.send([0xf0, 0, 0, command, argument, 0xf7])
+      return arrived
+    }
+
+    it('answers a plain dump out of RAM, in well under a millisecond of device time', async () => {
+      // setTimeout clamps to ~1 ms, so assert the shape, not the 0.81 ms figure.
+      expect(await timeCommand(0, 0)).toBeLessThan(50)
+    })
+
+    it.each([
+      ['wipe', 1],
+      ['save', 2],
+      ['reset bank', 3],
+    ])('makes %s pay for the flash write and the reload', async (_name, command) => {
+      // Only the save was timed on hardware; 1 and 3 do the same work or more,
+      // and modelling them as fast as a dump would hide a 200x difference.
+      expect(await timeCommand(command, 0)).toBeGreaterThan(100)
+    })
   })
 
   it('drains a burst at the measured rate rather than instantly', async () => {

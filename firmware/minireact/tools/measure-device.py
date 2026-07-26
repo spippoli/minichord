@@ -18,9 +18,24 @@ the throughput research (issue #3) established that Chromium imposes no meaningf
 limit at these volumes, so the browser would only add noise between us and the
 firmware, which is what we are actually measuring.
 
-Non-destructive: it writes only to SysEx addresses that appear in no parameter of
-parameters.json, so apply_audio_parameter() ignores them and no sound changes. It
-never sends command 2 (save to bank) or 1 (wipe memory), so nothing reaches flash.
+Nothing reaches flash: the only command ever sent is (0, 0), the request for a
+dump. Commands 1 (wipe), 2 (save to bank) and 3 (reset bank) are never sent, so
+no stored bank can be altered and the device is left as it was found.
+
+Sound, however, is *not* untouched throughout. T1-T3 write only to the SysEx
+addresses that appear in no parameter of parameters.json, so apply_audio_parameter()
+ignores them; T4 is different by design -- it reproduces a real 254-message preset
+load, which means writing every address from 2 to 255. Those writes carry the
+values read back in the dump taken at the start of T4, so they are normally an
+identity rewrite. If the operator moves a potentiometer or presses a preset button
+while T4 runs, that snapshot goes stale and the next burst pushes the device back
+to it. Leave the device alone for the duration of the run.
+
+Note also what T4's loss figure can and cannot say: only the ~39 probe addresses
+carry a sentinel, so a lost write to one of the 215 real parameter addresses --
+which are rewritten with the value already held -- leaves no trace. See
+`observedLossBound` in src/dev/simulator/fakeMidiAccess.ts for what the result
+actually bounds.
 
 Usage:
     python3 measure-device.py [--device /dev/snd/midiC2D0] [--json out.json]

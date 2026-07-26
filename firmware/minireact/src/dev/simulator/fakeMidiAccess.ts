@@ -15,7 +15,10 @@ import { MinichordDevice, type MinichordDeviceOptions } from './minichordDevice'
 
 /**
  * Measured on a minichord running firmware version 8, over ALSA rawmidi,
- * on 2026-07-26. Reproduce with `python3 tools/measure-device.py`.
+ * on 2026-07-26. Reproduce with `python3 tools/measure-device.py` -- every
+ * figure below except the flash-write latency, which the harness deliberately
+ * does not measure because it may not touch flash. See the simulator README
+ * for what these numbers do and do not establish.
  */
 export const CALIBRATION = {
   /**
@@ -32,17 +35,51 @@ export const CALIBRATION = {
   dumpLatencySeconds: 0.000_81,
 
   /**
-   * A save (command 2) writes flash and fully reloads the bank before
-   * answering: measured 164 ms, two orders of magnitude above a plain dump.
+   * Any command that writes flash and then reloads the bank: measured 164 ms
+   * for a save, two orders of magnitude above a plain dump.
+   *
+   * This covers commands 1, 2 and 3, not just the save. In the firmware,
+   * command 3 (reset bank) calls `save_config(parameter, true)` -- the same
+   * erase, write and reload as a save -- and command 1 (wipe) adds a LittleFS
+   * `quickFormat` on top. Only the save was timed on hardware; the other two
+   * are modelled at the same cost because they do the same work or more.
    */
-  saveLatencySeconds: 0.164,
+  flashWriteLatencySeconds: 0.164,
 
   /**
-   * No message loss was observed at any pacing, including none at all:
-   * 0/195 lost across seven intervals, and 0/117 probe slots lost across
-   * 254-message preset-load bursts. The host blocks rather than overflowing.
+   * A bank load with no write: the physical preset buttons, which run
+   * `load_config` alone.
+   *
+   * Not measured -- the harness never caught a button press. It is bounded
+   * above by the 164 ms of a save, which includes a `load_config`, and
+   * `load_config` is not cheap in its own right: it reads the bank file one
+   * character at a time into an Arduino `String`. We model it at that upper
+   * bound, so a prototype errs towards building the affordance for a slow
+   * operation rather than against it.
+   */
+  bankLoadLatencySeconds: 0.164,
+
+  /**
+   * No message loss was detected at any pacing, including none at all -- but
+   * read `observedLossBound` before relying on that.
    */
   observedLossRate: 0,
+
+  /**
+   * The 95% upper bound on per-message loss that the measurement supports.
+   *
+   * The preset-load test rewrites the 215 real parameter addresses with the
+   * value the device already holds, so a lost write to one of them leaves no
+   * trace in the dump that follows. Only the 39 unclaimed probe addresses carry
+   * a detectable sentinel, and none of them lies in 220..235, the rhythm
+   * bitmasks that close every burst. 117 clean probe slots therefore bound
+   * loss at 1 - 0.05^(1/117) ~= 2.5% per message, not at zero: up to ~6 lost
+   * parameters in a 254-message preset load would fit the data.
+   *
+   * Nothing here reproduces loss, because none was ever seen. An app that
+   * sends a preset load unpaced should still verify with a dump.
+   */
+  observedLossBound: 0.025,
 } as const
 
 export interface SimulatorOptions extends MinichordDeviceOptions {
@@ -185,9 +222,14 @@ export class MinichordSimulator {
     this.queueFreeAt = servicedAt
     if (!reply) return
 
-    // A save reloads the bank from flash before answering; a plain dump does not.
-    const isSave = data[1] === 0 && data[2] === 0 && data[3] === 2
-    const extra = isSave ? CALIBRATION.saveLatencySeconds : CALIBRATION.dumpLatencySeconds
+    // Commands 1, 2 and 3 all erase and rewrite flash before reloading the bank;
+    // only command 0 answers straight out of RAM. Classifying on "is it a save"
+    // would model a bank reset 200x faster than it runs.
+    const isCommand = data[1] === 0 && data[2] === 0
+    const writesFlash = isCommand && (data[3] === 1 || data[3] === 2 || data[3] === 3)
+    const extra = writesFlash
+      ? CALIBRATION.flashWriteLatencySeconds
+      : CALIBRATION.dumpLatencySeconds
     this.after(servicedAt - now + extra, () => this.emit(reply))
   }
 
@@ -213,9 +255,12 @@ export class MinichordSimulator {
    */
   pressPresetButton(direction: 1 | -1): void {
     const dump = this.device.switchBank(this.device.currentBank + direction)
-    this.after(this.realisticTiming ? CALIBRATION.saveLatencySeconds : 0, () =>
-      this.emit(dump),
-    )
+    if (!this.realisticTiming) {
+      // Match the deterministic path in `handleSend`: no timer, one microtask.
+      queueMicrotask(() => this.emit(dump))
+      return
+    }
+    this.after(CALIBRATION.bankLoadLatencySeconds, () => this.emit(dump))
   }
 
   /** Unplug the device. Ports go to `disconnected` and `statechange` fires. */
