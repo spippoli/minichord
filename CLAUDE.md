@@ -162,6 +162,20 @@ A preset is base64 of `v0;v1;…;v255;` (256 values separated and terminated by 
 
 `firmware/src/main.cpp` is a monolithic file holding the audio logic, chords, rhythm and LittleFS persistence; `firmware/include/audio_definition.h` defines the Teensy audio graph; `firmware/lib/` holds the drivers (AT42QT, MPR121, LittleFS, reverb, harp, potentiometers). `hardware/` is CC BY-NC 4.0, the software is BSD 3-clause.
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in the GitHub Issues of `spippoli/minichord`, via the `gh` CLI, always with an explicit `-R spippoli/minichord` so nothing is ever written to `upstream`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` glossary + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Conventions
 
 - In the existing domain the word is spelled **`adress`** (single `d`) in `parameters.json`, in HTML attributes and in the firmware. Keep the typo where it is part of the data contract (JSON keys); use the correct `address` in new code.
