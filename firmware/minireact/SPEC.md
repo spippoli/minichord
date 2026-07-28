@@ -337,12 +337,14 @@ code, so it is a deliberate decision of its own and is not taken here.
 bytes and a 513-byte dump are; it does not know what an address means. `state/` drives, the
 transport answers.
 
-`navigator` never leaves this layer. That is what lets `state/` be tested with no DOM shim.
+`navigator` never leaves this layer, and neither does any Web MIDI type: what comes out is
+`PortRef`, an identity and a name (§3.2). That is what lets `state/` be tested with no DOM shim.
 
 ### 3.2 The interface
 
 ```ts
-type PortPair = { input: MIDIInput; output: MIDIOutput }
+/** An opaque handle. No Web MIDI type crosses this seam. */
+type PortRef = { id: string; name: string }
 
 type TransportEvent =
   | { type: 'connection'; connected: boolean }
@@ -365,9 +367,9 @@ class MinichordTransport {
   onPermissionChange(cb: (s: PermissionState) => void): () => void
   requestAccess(): Promise<void>
 
-  listPorts(): readonly PortPair[]
-  probe(pair: PortPair, timeoutMs: number): Promise<boolean>
-  bind(pair: PortPair): void
+  listPorts(): readonly PortRef[]
+  probe(port: PortRef, timeoutMs: number): Promise<boolean>
+  bind(port: PortRef): void
   unbind(): void
 
   sendParameter(address: number, rawValue: number): boolean
@@ -387,15 +389,24 @@ the store, the strip and any future debug panel at once; nor `EventTarget`, whos
 `CustomEvent.detail` is `any`, losing the type exactly where the dump needs it.
 ([reasoning](https://github.com/spippoli/minichord/issues/6))
 
+**A port is an opaque `PortRef`, never the `MIDIInput`/`MIDIOutput` pair.** The transport keeps the
+pairing — `id → { input, output }` — to itself and hands out an identity and a name, which is all
+any caller ever reads: `state/connection` filters on the name (§9.3), the gate prints the name
+(§9.7), and nothing above this layer touches a `MIDIPort`. Exposing the pair is what a faithful
+mirror of the platform suggests, and it puts a Web MIDI type in the interface of a layer specified
+to need no DOM: `isCandidatePort` and the 0/1/2+ decision table would then be testable only against
+objects standing in for a browser type, instead of against two string fields. The seam is opaque or
+it is not a seam.
+
 `requestDump` / `wipeMemory` / `saveToBank` / `resetBank` are thin typed wrappers over
 `sendCommand`, so the four protocol commands have a name rather than a magic number at every call
 site.
 
 ### 3.3 `probe`
 
-`probe` sends `(0, 0)` on one output, listens on the paired input, and resolves `true` on a
-513-byte dump inside the window, `false` on the timeout. **The dump it consumed is discarded and
-never emitted.**
+`probe` sends `(0, 0)` on one port's output, listens on the input the transport has paired with it,
+and resolves `true` on a 513-byte dump inside the window, `false` on the timeout. **The dump it
+consumed is discarded and never emitted.**
 
 It looks like initiative and is not: one candidate, one wire operation, no policy. It does not know
 what a candidate is, how many there are, or what the count means. The window is the caller's
@@ -565,6 +576,7 @@ state/
   parameters/reducer.ts   the 256 values, pure
   reducer.ts              the root: composes them, owns the one cross-cutting rule
   effects.ts              the effect types a reducer may return
+  bulkWrite.ts            write a set of addresses, confirm it, report what did not take
   runtime.ts              the engine: dispatch, execute, notify — no React
 ```
 
@@ -693,7 +705,33 @@ Coalescing, not pacing, is what does the work: one address at 60 Hz is 3.5% of t
 ceiling, while an uncoalesced 1000 Hz mouse on a single slider would sit at 58% of it with nothing
 left over for a second control.
 
-### 5.8 Filling the store
+### 5.8 The bulk write, named once and used three times
+
+Three features write many addresses at once and none of them can trust that the writes landed
+(§1.6): the preset import (§11.3), the randomiser and its undo (§11.5), and the dock's revert-all
+(§10.4). **They are one module, not three implementations of the same paragraph.**
+
+```ts
+type BulkWriteResult = { applied: number; diverged: readonly number[] }
+
+function bulkWrite(values: ReadonlyMap<number, number>): Promise<BulkWriteResult>
+```
+
+It sends the addresses unpaced, requests a dump, compares the returning dump against what it sent,
+re-sends whatever diverged, requests a second dump, and stops — the two-round rule of §11.3, with
+its reasoning, stated there once. **Addresses 2–7 are excluded from the comparison** for the reasons
+of §5.4, and getting that exclusion wrong is precisely the bug that would otherwise be written three
+times: without it every round reports five or six phantom divergences and the repair never
+converges.
+
+Callers build a map and read a count. They do not know a dump is involved, and they do not each
+carry a copy of the exclusion list. The caller-visible difference between an import, a randomise and
+a revert is *which addresses are in the map* — everything else is this module's.
+
+This lives in `state/` and not in `domain/`: it awaits round trips and drives the transport, which
+is exactly what a pure layer cannot do.
+
+### 5.9 Filling the store
 
 **There is exactly one way into the store: the transport's `dump` event.**
 
@@ -774,14 +812,22 @@ Stated as a requirement, because an implementer who does not know it writes a `f
 nothing: **giving focus to a control may require switching section and unfolding its plate first,
 and therefore happens after React has committed.**
 
-> **Open:** the *mechanism* by which a control's tab stop is reached by address. A `data-` attribute
-> plus a DOM query, or a ref registry, or something else. What constrains it anyway: it must work
-> for a control that is **not yet mounted** at the moment the request is made, which is what makes a
-> registry keyed on mount order the risky choice. Nobody will review which you pick — fixing the
-> mechanism here buys nothing the contract does not already buy. This is the point where the form
-> of this section risks the most: "reachable from outside" without saying how is exactly the kind of
-> sentence an implementer reads and does not implement.
-> ([reasoning](https://github.com/spippoli/minichord/issues/22))
+**The whole gesture is one function of the panel** — not a component, so §6.2's list of six
+stands — carrying a great deal of behaviour behind a signature of one argument:
+
+```ts
+function focusParameter(address: number): void
+```
+
+It switches section, unfolds the plate, waits for React to commit, finds the control and moves the
+focus. **Its three callers — the dock's jump link (§12.3), `Ctrl+K` then `Tab` (§12.3), and the
+tab-stop contract of this invariant — learn none of that.** Naming it is the point: "reachable from
+outside" with no function to call is exactly the kind of sentence an implementer reads and does not
+implement, and the two historical failures above are both what that looks like.
+
+The mechanism underneath is a `data-` attribute carrying the address plus a DOM query after the
+commit. It is forced rather than chosen: the request is made while the control is **not yet
+mounted**, which is what rules out a registry keyed on mount.
 
 **7. Two single-instance channels, on different clocks, that do not merge.** The **readout**
 explains what you are touching right now and is mute for a screen reader. The **strip** says what
@@ -1124,7 +1170,7 @@ Since only cable 1 carries SysEx, the device can answer the question we cannot:
 1. **Filter** the ports whose name contains `minichord`, case-insensitively —
    `isCandidatePort(name)`, a pure function in `state/connection/ports.ts`. The filter exists only
    to bound the blast radius: we do not spray SysEx at someone else's synth on the same bus.
-2. **Probe** every candidate pair in parallel, each with a **1 second** window (§3.3). Cable 2
+2. **Probe** every candidate port in parallel, each with a **1 second** window (§3.3). Cable 2
    stays silent and excludes itself, whatever its name.
 3. **Count the answers.**
 
@@ -1275,6 +1321,13 @@ exactly three events:
 
 Every other dump updates values (§5.3) and leaves the reference alone.
 
+The third case is the one that needs machinery, and it is one field: **issuing a save or a reset
+raises a flag on `parameters`, and the next dump consumes it** — captures the reference and clears
+it. Stated because the alternative is what an implementer reaches for when the flag is not in the
+spec: inspecting the incoming dump to guess where it came from, which is the one thing this section
+has just established cannot be done. The flag is also what keeps case 3 out of `connection`: a save
+is not a connection event, and the edge of §5.5 runs the other way.
+
 **Stated as an assumption and not repaired:** the first dump is the answer to our own probe, so it
 is live state, and any physical pot drift since the last load is already inside it and counts as
 saved. The flash is readable only in the instant the device loads it. The alternative — no reference
@@ -1295,10 +1348,10 @@ different gravities.
 
 The legacy asks nothing before either destructive command.
 
-**Revert yes, undo no.** Discarding unsaved changes is just re-sending the reference of §10.3, and
-it is the dock's "revert all" rather than new machinery. It touches no flash, so no confirmation.
-It exists because if the LEDs tell you that you diverged, the gesture opposite to saving must
-exist.
+**Revert yes, undo no.** Discarding unsaved changes is just re-sending the reference of §10.3
+through `bulkWrite` (§5.8), and it is the dock's "revert all" rather than new machinery. It touches
+no flash, so no confirmation. It exists because if the LEDs tell you that you diverged, the gesture
+opposite to saving must exist.
 
 > **Not:** undoing a bank reset. It is technically possible — hold the previous 256 values, re-send,
 > re-save — and it is rejected on the measurements: a 254-message bulk write does not self-confirm
@@ -1396,15 +1449,17 @@ Three addresses ranges are never written:
 - **1**: writing it poisons the bank id of every later dump (§1.5).
 - **255**: the legacy writes 0 there purely as a side effect of the trailing separator.
 
-**A load that comes back wrong gets one repair round, then is stated.** The load ends with a dump
-request; the returning dump is compared against what was sent, excluding 2–7; divergent addresses
-are re-sent and a second dump requested. **Stop after the second round** — a second loss on the
-same address is under 0.1% given the ≈2.5% bound, so a third round would not be fighting packet
-loss, it would be fighting the firmware normalising a value. If anything still diverges, the strip
-says how many and stops.
+**A load that comes back wrong gets one repair round, then is stated.** The import hands its
+addresses to `bulkWrite` (§5.8) and reads back a count; the compare-and-repair is that module's, not
+the import's. The load ends with a dump request; the returning dump is compared against what was
+sent, excluding 2–7; divergent addresses are re-sent and a second dump requested. **Stop after the
+second round** — a second loss on the same address is under 0.1% given the ≈2.5% bound, so a third
+round would not be fighting packet loss, it would be fighting the firmware normalising a value. If
+anything still diverges, the strip says how many and stops.
 
 This repair round exists *only* because a bulk write is not self-confirming (§1.6). Without that
-measurement it would read as paranoia.
+measurement it would read as paranoia. It is written here, at its largest caller, and shared from
+§5.8 by the two others.
 
 ### 11.4 The surface
 
@@ -1468,8 +1523,8 @@ no `alert()`, all of which the legacy uses.
 - **No confirmation, but a one-shot undo.** Asking before a gesture meant to be repeated ten times
   in a row would kill it. The first click randomises; immediately after, the button offers to go
   back and re-sends the values the section held a moment earlier. §10.4's objection to undo does not
-  apply here: the compare-and-repair of §11.3 covers this write too, and a section is at most 96
-  addresses.
+  apply here: both the randomise and its undo go through `bulkWrite` (§5.8), so the
+  compare-and-repair of §11.3 covers them too, and a section is at most 96 addresses.
 
 ### 11.6 Provenance
 
@@ -1529,8 +1584,9 @@ said** (Appendix A.4).
 - **The three section buttons are a real `tablist`**: one stop, arrow keys to change section. It is
   the one place the markup was lying about what it is.
 - **The dock's jump link moves focus** onto the control, after switching section and unfolding the
-  plate. Without that it moves the eye and not the hand — and the hand could not follow anyway,
-  because the dock sits *after* the grid in DOM order, so Tab from a dock link leaves the document.
+  plate — it calls `focusParameter` (§6.1, invariant 6) and owns none of that itself. Without it the
+  link moves the eye and not the hand — and the hand could not follow anyway, because the dock sits
+  *after* the grid in DOM order, so Tab from a dock link leaves the document.
 - **A skip link is the panel's first stop** — to the dock and back. Reaching the dock otherwise
   means crossing all 96 controls of a chord section. It is the oldest mechanism on the web,
   discovered by pressing Tab, and it costs no new key.
@@ -1633,7 +1689,6 @@ unspecified above the altitude declared in §0.
 
 | what is free | where |
 |---|---|
-| the mechanism by which a control's tab stop is reached by address | §6.1, invariant 6 |
 | the concrete colour values behind the panel's ~110 tokens | §7.4 |
 
 ### 13.2 Out of scope
