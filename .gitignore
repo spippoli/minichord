@@ -53,5 +53,7 @@ documentation/site/js
 documentation/site/search
 #Project management folder
 management/
-#Backup 
+#Backup
 hardware/PCB/miniChord_main_backup.zip
+#Local agent state: machine-local settings and agent worktree checkouts
+.claude/
