@@ -60,10 +60,12 @@ npm run dev       # Vite dev server — the only supported workflow for now
 npm test          # Vitest, run once
 npm run test:watch
 npm run lint      # oxlint (what the Vite scaffold now ships instead of ESLint)
+npm run format    # prettier, default options, on demand — no hook, no CI gate
+npm run format:check
 npm run build     # tsc -b && vite build
 ```
 
-The project is scaffolded (React + TypeScript, Vite 8). **No application code exists yet**: the map that governs this work produces a specification, not an implementation. The only thing built so far is the throwaway protocol simulator in `src/dev/simulator/` (see its `README.md`), and `npm run dev` currently boots its bench, `src/dev/SimulatorConsole.tsx` — a debug surface, not a user interface.
+The project is scaffolded (React + TypeScript, Vite 8) and `firmware/minireact/SPEC.md` is the specification being implemented. The layer skeleton of §2.1 exists — `src/transport/`, `src/domain/`, `src/state/`, `src/ui/`, with dependencies running one way `transport → domain → state → ui` — and `npm run dev` mounts `src/ui/App.tsx`, still blank. The throwaway protocol simulator in `src/dev/simulator/` (see its `README.md`) and its bench `src/dev/SimulatorConsole.tsx` are development fixtures, not application code.
 
 `firmware/minireact/.gitignore` is local to the project and covers `node_modules/`, `dist/` and Python bytecode. Beware the root `.gitignore`: its virtualenv patterns (`[Bb]in`, `[Ss]cripts`, `[Ll]ocal`, `[Ll]ib64`) are unanchored, so a `scripts/` or `src/bin` directory anywhere in the SPA would be silently ignored — which is why the Python helpers live in `tools/`.
 

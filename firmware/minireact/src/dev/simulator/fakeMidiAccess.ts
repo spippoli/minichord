@@ -1,4 +1,7 @@
-import { MinichordDevice, type MinichordDeviceOptions } from './minichordDevice'
+import {
+  MinichordDevice,
+  type MinichordDeviceOptions,
+} from "./minichordDevice";
 
 /**
  * A fake `MIDIAccess` exposing a simulated minichord.
@@ -80,7 +83,7 @@ export const CALIBRATION = {
    * sends a preset load unpaced should still verify with a dump.
    */
   observedLossBound: 0.025,
-} as const
+} as const;
 
 export interface SimulatorOptions extends MinichordDeviceOptions {
   /**
@@ -89,66 +92,68 @@ export interface SimulatorOptions extends MinichordDeviceOptions {
    * Set false for deterministic tests: everything then resolves on a
    * microtask, and no timer is involved.
    */
-  realisticTiming?: boolean
+  realisticTiming?: boolean;
   /** Port name pattern to expose. The default matches the Linux ALSA naming. */
-  portNames?: readonly [string, string]
+  portNames?: readonly [string, string];
 }
 
 class FakePort extends EventTarget {
-  readonly manufacturer = 'minichord simulator'
-  readonly version = '8'
-  state: MIDIPortDeviceState = 'connected'
-  connection: MIDIPortConnectionState = 'open'
+  readonly manufacturer = "minichord simulator";
+  readonly version = "8";
+  state: MIDIPortDeviceState = "connected";
+  connection: MIDIPortConnectionState = "open";
 
-  readonly id: string
-  readonly name: string
-  readonly type: MIDIPortType
+  readonly id: string;
+  readonly name: string;
+  readonly type: MIDIPortType;
 
   constructor(id: string, name: string, type: MIDIPortType) {
-    super()
-    this.id = id
-    this.name = name
-    this.type = type
+    super();
+    this.id = id;
+    this.name = name;
+    this.type = type;
   }
 
   async open(): Promise<this> {
-    return this
+    return this;
   }
 
   async close(): Promise<this> {
-    return this
+    return this;
   }
 }
 
 class FakeInput extends FakePort {
-  onmidimessage: ((event: MIDIMessageEvent) => void) | null = null
+  onmidimessage: ((event: MIDIMessageEvent) => void) | null = null;
 
   constructor(id: string, name: string) {
-    super(id, name, 'input')
+    super(id, name, "input");
   }
 
   /** Deliver bytes as if they had arrived from the device. */
   deliver(data: Uint8Array): void {
-    const event = new MessageEvent('midimessage', { data }) as unknown as MIDIMessageEvent
-    this.onmidimessage?.(event)
-    this.dispatchEvent(event as unknown as Event)
+    const event = new MessageEvent("midimessage", {
+      data,
+    }) as unknown as MIDIMessageEvent;
+    this.onmidimessage?.(event);
+    this.dispatchEvent(event as unknown as Event);
   }
 }
 
 class FakeOutput extends FakePort {
-  private readonly onSend: (data: Uint8Array) => void
+  private readonly onSend: (data: Uint8Array) => void;
 
   constructor(id: string, name: string, onSend: (data: Uint8Array) => void) {
-    super(id, name, 'output')
-    this.onSend = onSend
+    super(id, name, "output");
+    this.onSend = onSend;
   }
 
   send(data: number[] | Uint8Array): void {
-    if (this.state !== 'connected') {
+    if (this.state !== "connected") {
       // Matches the spec: sending to a disconnected port throws.
-      throw new DOMException('port is not connected', 'InvalidStateError')
+      throw new DOMException("port is not connected", "InvalidStateError");
     }
-    this.onSend(data instanceof Uint8Array ? data : Uint8Array.from(data))
+    this.onSend(data instanceof Uint8Array ? data : Uint8Array.from(data));
   }
 
   clear(): void {
@@ -163,26 +168,31 @@ class FakeOutput extends FakePort {
  * side of the device (bank buttons, unplugging) through the returned object.
  */
 export class MinichordSimulator {
-  readonly device: MinichordDevice
-  readonly access: MIDIAccess
+  readonly device: MinichordDevice;
+  readonly access: MIDIAccess;
 
-  private readonly input: FakeInput
-  private readonly output: FakeOutput
-  private readonly realisticTiming: boolean
+  private readonly input: FakeInput;
+  private readonly output: FakeOutput;
+  private readonly realisticTiming: boolean;
   /** Device time at which the ingest queue drains, in performance-clock seconds. */
-  private queueFreeAt = 0
+  private queueFreeAt = 0;
 
   constructor(options: SimulatorOptions = {}) {
-    this.device = new MinichordDevice(options)
-    this.realisticTiming = options.realisticTiming ?? true
-    const [first, second] = options.portNames ?? ['minichord MIDI 1', 'minichord MIDI 2']
+    this.device = new MinichordDevice(options);
+    this.realisticTiming = options.realisticTiming ?? true;
+    const [first, second] = options.portNames ?? [
+      "minichord MIDI 1",
+      "minichord MIDI 2",
+    ];
 
-    this.input = new FakeInput('sim-in-1', first)
-    this.output = new FakeOutput('sim-out-1', first, (data) => this.handleSend(data))
-    const otherIn = new FakeInput('sim-in-2', second)
-    const otherOut = new FakeOutput('sim-out-2', second, () => {})
+    this.input = new FakeInput("sim-in-1", first);
+    this.output = new FakeOutput("sim-out-1", first, (data) =>
+      this.handleSend(data),
+    );
+    const otherIn = new FakeInput("sim-in-2", second);
+    const otherOut = new FakeOutput("sim-out-2", second, () => {});
 
-    const access = new EventTarget() as unknown as MIDIAccess
+    const access = new EventTarget() as unknown as MIDIAccess;
     Object.assign(access, {
       inputs: new Map<string, MIDIInput>([
         [this.input.id, this.input as unknown as MIDIInput],
@@ -194,12 +204,12 @@ export class MinichordSimulator {
       ]),
       sysexEnabled: true,
       onstatechange: null,
-    })
-    this.access = access
+    });
+    this.access = access;
   }
 
   private now(): number {
-    return performance.now() / 1000
+    return performance.now() / 1000;
   }
 
   /**
@@ -210,41 +220,43 @@ export class MinichordSimulator {
    * device. Nothing is ever dropped, because nothing ever was on the real one.
    */
   private handleSend(data: Uint8Array): void {
-    const reply = this.device.receive(data)
+    const reply = this.device.receive(data);
 
     if (!this.realisticTiming) {
-      if (reply) queueMicrotask(() => this.emit(reply))
-      return
+      if (reply) queueMicrotask(() => this.emit(reply));
+      return;
     }
 
-    const now = this.now()
-    const servicedAt = Math.max(now, this.queueFreeAt) + CALIBRATION.ingestSecondsPerMessage
-    this.queueFreeAt = servicedAt
-    if (!reply) return
+    const now = this.now();
+    const servicedAt =
+      Math.max(now, this.queueFreeAt) + CALIBRATION.ingestSecondsPerMessage;
+    this.queueFreeAt = servicedAt;
+    if (!reply) return;
 
     // Commands 1, 2 and 3 all erase and rewrite flash before reloading the bank;
     // only command 0 answers straight out of RAM. Classifying on "is it a save"
     // would model a bank reset 200x faster than it runs.
-    const isCommand = data[1] === 0 && data[2] === 0
-    const writesFlash = isCommand && (data[3] === 1 || data[3] === 2 || data[3] === 3)
+    const isCommand = data[1] === 0 && data[2] === 0;
+    const writesFlash =
+      isCommand && (data[3] === 1 || data[3] === 2 || data[3] === 3);
     const extra = writesFlash
       ? CALIBRATION.flashWriteLatencySeconds
-      : CALIBRATION.dumpLatencySeconds
-    this.after(servicedAt - now + extra, () => this.emit(reply))
+      : CALIBRATION.dumpLatencySeconds;
+    this.after(servicedAt - now + extra, () => this.emit(reply));
   }
 
   private after(seconds: number, action: () => void): void {
-    setTimeout(action, Math.max(0, seconds * 1000))
+    setTimeout(action, Math.max(0, seconds * 1000));
   }
 
   private emit(payload: Uint8Array): void {
     // The wire carries F0 + 512 bytes + F7, and Web MIDI hands the whole frame
     // to onmidimessage, F0 included.
-    const frame = new Uint8Array(payload.length + 2)
-    frame[0] = 0xf0
-    frame.set(payload, 1)
-    frame[frame.length - 1] = 0xf7
-    this.input.deliver(frame)
+    const frame = new Uint8Array(payload.length + 2);
+    frame[0] = 0xf0;
+    frame.set(payload, 1);
+    frame[frame.length - 1] = 0xf7;
+    this.input.deliver(frame);
   }
 
   // -- the physical side, for driving prototypes -------------------------
@@ -254,46 +266,46 @@ export class MinichordSimulator {
    * dump on its own initiative -- the app never asked for it.
    */
   pressPresetButton(direction: 1 | -1): void {
-    const dump = this.device.switchBank(this.device.currentBank + direction)
+    const dump = this.device.switchBank(this.device.currentBank + direction);
     if (!this.realisticTiming) {
       // Match the deterministic path in `handleSend`: no timer, one microtask.
-      queueMicrotask(() => this.emit(dump))
-      return
+      queueMicrotask(() => this.emit(dump));
+      return;
     }
-    this.after(CALIBRATION.bankLoadLatencySeconds, () => this.emit(dump))
+    this.after(CALIBRATION.bankLoadLatencySeconds, () => this.emit(dump));
   }
 
   /** Unplug the device. Ports go to `disconnected` and `statechange` fires. */
   disconnect(): void {
     for (const port of [this.input, this.output]) {
-      port.state = 'disconnected'
-      port.connection = 'closed'
+      port.state = "disconnected";
+      port.connection = "closed";
     }
-    this.fireStateChange(this.input)
+    this.fireStateChange(this.input);
   }
 
   /** Plug it back in. */
   reconnect(): void {
     for (const port of [this.input, this.output]) {
-      port.state = 'connected'
-      port.connection = 'open'
+      port.state = "connected";
+      port.connection = "open";
     }
-    this.queueFreeAt = 0
-    this.fireStateChange(this.input)
+    this.queueFreeAt = 0;
+    this.fireStateChange(this.input);
   }
 
   private fireStateChange(port: FakePort): void {
-    const event = new Event('statechange') as MIDIConnectionEvent
-    Object.defineProperty(event, 'port', { value: port, configurable: true })
-    this.access.onstatechange?.call(this.access, event)
-    this.access.dispatchEvent(event)
+    const event = new Event("statechange") as MIDIConnectionEvent;
+    Object.defineProperty(event, "port", { value: port, configurable: true });
+    this.access.onstatechange?.call(this.access, event);
+    this.access.dispatchEvent(event);
   }
 
   /** Drop-in for `navigator.requestMIDIAccess`, to inject into the transport. */
   requestAccess = async (options?: MIDIOptions): Promise<MIDIAccess> => {
     if (!options?.sysex) {
-      throw new DOMException('sysex access is required', 'SecurityError')
+      throw new DOMException("sysex access is required", "SecurityError");
     }
-    return this.access
-  }
+    return this.access;
+  };
 }

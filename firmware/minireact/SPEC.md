@@ -15,7 +15,7 @@ interface is a redesign and diverges from it deliberately in about a dozen place
 
 It is written to be **sufficient on its own**. The reader is assumed to have this file, the
 repository, and nothing else — no network, no issue tracker, no prototype branch. Every sentence
-that constrains the code is *in* this document; the links at the foot of each section carry only
+that constrains the code is _in_ this document; the links at the foot of each section carry only
 the reasoning behind a decision, never the decision itself. A reader who never opens one of them
 must still be able to implement the app without making a design choice.
 
@@ -29,7 +29,7 @@ everything is free by construction and is not marked as such:
 - CSS that is not bound to a token named here;
 - the internal shape of any function whose signature is given.
 
-Do not read an omission below that line as an oversight. Where freedom sits *above* the line — a
+Do not read an omission below that line as an oversight. Where freedom sits _above_ the line — a
 place a reader would reasonably expect a decision and not find one — it is marked, see below.
 
 ### The two markers
@@ -37,20 +37,20 @@ place a reader would reasonably expect a decision and not find one — it is mar
 Exactly two inline markers appear in this document, and they are the only places an inline link
 occurs.
 
-> **Not:** *the alternative that was rejected, and why.* Used only where the rejected option is
+> **Not:** _the alternative that was rejected, and why._ Used only where the rejected option is
 > what a reasonable implementer would reach for by default — most often because the legacy editor
 > does it that way, and the legacy editor is by contract the reference sitting open beside you.
 > Grep for `**Not:**` to get the complete list of deliberate divergences.
 
-> **Open:** *what is genuinely free, what constrains it anyway, and the fact that nobody will
-> review your choice.* Rare. Every instance is indexed in §13.
+> **Open:** _what is genuinely free, what constrains it anyway, and the fact that nobody will
+> review your choice._ Rare. Every instance is indexed in §13.
 
 A decision that depends on something unverified is written as a **conditional**, not as an
 opening: you are told what to do in each case and you decide nothing, you only look.
 
 ### Citation
 
-Each section ends with a *Decided in* line naming the tickets that settled it. Ticket titles are
+Each section ends with a _Decided in_ line naming the tickets that settled it. Ticket titles are
 always spelled out; the number rides inside the URL. Several decisions were taken against
 throwaway prototypes on branches named there — **those branches are ephemeral, are not on `dev`,
 and may no longer exist.** Nothing in this document depends on reading them. If a branch is gone,
@@ -61,22 +61,22 @@ nothing is missing.
 The document is ordered so that the `ui/` invariants (§6) arrive before the surfaces they govern.
 That costs a handful of forward references, and this table absorbs them.
 
-| term | meaning |
-|---|---|
-| **address** | one of the 256 SysEx slots that make up the whole device state |
-| **parameter** | one record of `firmware/generator/parameters.json`, owning one address |
-| **section** | one of the three top-level partitions: global, harp, chord |
-| **plate** | one collapsible card holding one `group` of parameters within a section |
-| **kind** | which widget a parameter is drawn as: `toggle`, `select`, `stepper`, `slider`, `picker`, `sequencer` |
-| **control** | the on-screen thing that edits one parameter, whatever its kind |
-| **binding** | the one component per parameter that reads the store and feeds the control |
-| **readout** | the single strip in the panel header that explains the control under the pointer or focus |
-| **strip** | the single top-bar line where the app speaks about the device |
-| **gate** | the connection screen shown before the first dump |
-| **dock** | the edit buffer: the list of everything changed since the bank was loaded |
-| **sequencer** | the rhythm grid at addresses 220–235, sixteen steps by seven bits |
-| **wire value** | the integer actually carried by SysEx, before any `/100` or curve is applied |
-| **dump** | the device's report of all 256 values |
+| term           | meaning                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| **address**    | one of the 256 SysEx slots that make up the whole device state                                       |
+| **parameter**  | one record of `firmware/generator/parameters.json`, owning one address                               |
+| **section**    | one of the three top-level partitions: global, harp, chord                                           |
+| **plate**      | one collapsible card holding one `group` of parameters within a section                              |
+| **kind**       | which widget a parameter is drawn as: `toggle`, `select`, `stepper`, `slider`, `picker`, `sequencer` |
+| **control**    | the on-screen thing that edits one parameter, whatever its kind                                      |
+| **binding**    | the one component per parameter that reads the store and feeds the control                           |
+| **readout**    | the single strip in the panel header that explains the control under the pointer or focus            |
+| **strip**      | the single top-bar line where the app speaks about the device                                        |
+| **gate**       | the connection screen shown before the first dump                                                    |
+| **dock**       | the edit buffer: the list of everything changed since the bank was loaded                            |
+| **sequencer**  | the rhythm grid at addresses 220–235, sixteen steps by seven bits                                    |
+| **wire value** | the integer actually carried by SysEx, before any `/100` or curve is applied                         |
+| **dump**       | the device's report of all 256 values                                                                |
 
 ### Language and scope reminders
 
@@ -86,7 +86,7 @@ desktop window is supported down to a declared floor (§7); it is not a mobile t
 
 All identifiers, comments, UI strings and commit messages are in English.
 
-*Decided in: [Decide the structure of SPEC.md and how the closed tickets flow into it](https://github.com/spippoli/minichord/issues/23) · [Decide how ui/ is cut into components, and whether SPEC.md names the boundaries](https://github.com/spippoli/minichord/issues/22).*
+_Decided in: [Decide the structure of SPEC.md and how the closed tickets flow into it](https://github.com/spippoli/minichord/issues/23) · [Decide how ui/ is cut into components, and whether SPEC.md names the boundaries](https://github.com/spippoli/minichord/issues/22)._
 
 ---
 
@@ -115,12 +115,12 @@ Legal ranges: address `0..255`, value `0..16383`.
 When the address is `0` the message is a command rather than a write: `valLo` is the command,
 `valHi` its argument.
 
-| command | argument | meaning | cost |
-|---|---|---|---|
-| `0` | ignored | send back the full state | ~0.8 ms |
-| `1` | ignored | wipe all memory to factory | ~164 ms |
-| `2` | bank `0..11` | save current state into that bank | 164 ms |
-| `3` | bank `0..11` | reset that bank to factory defaults | ~164 ms |
+| command | argument     | meaning                             | cost    |
+| ------- | ------------ | ----------------------------------- | ------- |
+| `0`     | ignored      | send back the full state            | ~0.8 ms |
+| `1`     | ignored      | wipe all memory to factory          | ~164 ms |
+| `2`     | bank `0..11` | save current state into that bank   | 164 ms  |
+| `3`     | bank `0..11` | reset that bank to factory defaults | ~164 ms |
 
 Commands `1` and `3` are destructive to the operator's own banks and were **never sent to real
 hardware**; their cost is read off the firmware source, where both call the same erase-write-reload
@@ -141,23 +141,23 @@ an answer from an announcement by inspecting the payload, and is specified never
 
 ### 1.4 The 256 addresses
 
-| addresses | content |
-|---|---|
-| 0 | not a parameter — the command slot |
-| 1 | bank id, `0..11` on the wire, shown `1..12` |
-| 2, 3 | harp and chord volume (physical potentiometers) |
-| 4, 5, 6 | potentiometer storage (physical potentiometers) |
-| 7 | firmware version, an integer counter |
-| 10–17 | potentiometer routing and ranges |
-| 20–35, 106–108 | global parameters |
-| 40–105 | harp parameters |
-| 120–219 | chord parameters |
-| 220–235 | rhythm patterns, one 7-bit mask each |
+| addresses      | content                                         |
+| -------------- | ----------------------------------------------- |
+| 0              | not a parameter — the command slot              |
+| 1              | bank id, `0..11` on the wire, shown `1..12`     |
+| 2, 3           | harp and chord volume (physical potentiometers) |
+| 4, 5, 6        | potentiometer storage (physical potentiometers) |
+| 7              | firmware version, an integer counter            |
+| 10–17          | potentiometer routing and ranges                |
+| 20–35, 106–108 | global parameters                               |
+| 40–105         | harp parameters                                 |
+| 120–219        | chord parameters                                |
+| 220–235        | rhythm patterns, one 7-bit mask each            |
 
 `firmware/generator/parameters.json` declares **195 parameters** across those ranges, with globally
 unique addresses spanning 2–235. Six of them are in the `hidden` group (addresses 2–7) and are
 never drawn; **189 are visible**. Group order and address order do not coincide, and the section
-ranges above describe where a section's *visible* parameters live, not a contiguous block the app
+ranges above describe where a section's _visible_ parameters live, not a contiguous block the app
 may assume.
 
 **39 addresses in 2–235 carry no parameter at all**: 8, 9, 18, 19, 36–39, 109–119, 200–219. Nothing
@@ -171,17 +171,17 @@ against the hardware.
 
 - **The firmware applies no address protection whatsoever.** `processMIDI` executes
   `current_sysex_parameters[adress] = value` unconditionally. The "protected" (2–9) and "limited
-  access" (10–17) ranges are conventions of the *editor*, not of the device — confirmed by writing
+  access" (10–17) ranges are conventions of the _editor_, not of the device — confirmed by writing
   8 and 9 and reading them back. Above address 255 it is an out-of-bounds write into whatever
   follows the array, which is why the transport throws rather than sends (§3.4).
 - **Address 1 must never be written.** There is no `case 1:` in the firmware's switch, but the
-  store happens *before* the switch, so a write to address 1 does not change bank — it poisons the
+  store happens _before_ the switch, so a write to address 1 does not change bank — it poisons the
   bank id reported in every subsequent dump, until the next `load_config`. Unlike address 7, the
   firmware does **not** heal it.
 - **The firmware heals address 7.** `apply_audio_parameter`'s `case 7` reassigns `version_ID`
   after the store, so the firmware-version slot cannot be written. Any client that mirrors its own
   writes optimistically must not believe a write to 7.
-- **Saving to a bank also switches to it.** `save_config` assigns `current_bank_number` *before*
+- **Saving to a bank also switches to it.** `save_config` assigns `current_bank_number` _before_
   writing and then fully reloads. There is no "save a copy over there while staying here".
 - **There is no load-bank command.** Bank navigation exists only on the physical buttons.
 - **There are 12 banks**, files `a.txt`…`l.txt`, hardcoded and not readable over SysEx. In the
@@ -197,8 +197,7 @@ against the hardware.
 - **The seven rhythm bits are seven notes of the chord, not seven voices.** Bit `i` is note `i`,
   folded onto a physical voice by `i < 4 ? i : i - 3`, because the chord section has four voices.
   Which pitch each row plays is chosen by `chord shuffling` (address 120).
-- **`rythm pattern` declares `max_value: 128`** in `parameters.json` where a 7-bit mask tops out at
-  127. Harmless as long as nothing generates a value from that range — the sequencer only flips
+- **`rythm pattern` declares `max_value: 128`** in `parameters.json` where a 7-bit mask tops out at 127. Harmless as long as nothing generates a value from that range — the sequencer only flips
   bits — but the declared range is wrong.
 - **The device may re-enumerate on the USB bus without being touched.** Observed three times in one
   session, cable untouched, autosuspend off, not reproducible on demand. Treat a disconnect as an
@@ -213,12 +212,12 @@ Taken against a minichord on firmware 8 over ALSA rawmidi on Linux, by
 `firmware/minireact/tools/measure-device.py`. These are properties of the hardware, not budgets for
 this app; they are here because several rules below would otherwise read as paranoia.
 
-| quantity | value | how |
-|---|---|---|
-| ingest rate | **0.581 ms/message** (~1720 msg/s) | slope of burst drain time over 25–800 messages |
-| dump round trip | median **0.81 ms**, p95 1.41 ms, max 1.91 ms | 500 consecutive `(0, 0)`, 0 timeouts |
-| save round trip | **164 ms** | `(2, bank)` timed to the dump that follows |
-| message loss | none observed; bounded at **≈2.5% per message** | 117 clean probe slots inside 254-message bursts |
+| quantity        | value                                           | how                                             |
+| --------------- | ----------------------------------------------- | ----------------------------------------------- |
+| ingest rate     | **0.581 ms/message** (~1720 msg/s)              | slope of burst drain time over 25–800 messages  |
+| dump round trip | median **0.81 ms**, p95 1.41 ms, max 1.91 ms    | 500 consecutive `(0, 0)`, 0 timeouts            |
+| save round trip | **164 ms**                                      | `(2, bank)` timed to the dump that follows      |
+| message loss    | none observed; bounded at **≈2.5% per message** | 117 clean probe slots inside 254-message bursts |
 
 Three qualifications carry weight downstream:
 
@@ -235,7 +234,7 @@ Three qualifications carry weight downstream:
 Everything above is re-measurable and re-verifiable; none of it is a threshold this app must meet.
 This document sets **no performance budget anywhere**, because nothing would verify one (§2.4).
 
-*Decided in: [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) · [Decide the preset code and random generator UX](https://github.com/spippoli/minichord/issues/13) · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Research: Web MIDI SysEx output throughput and latency constraints](https://github.com/spippoli/minichord/issues/3).*
+_Decided in: [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) · [Decide the preset code and random generator UX](https://github.com/spippoli/minichord/issues/13) · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Research: Web MIDI SysEx output throughput and latency constraints](https://github.com/spippoli/minichord/issues/3)._
 
 ---
 
@@ -325,7 +324,7 @@ code, so it is a deliberate decision of its own and is not taken here.
 
 `firmware/minireact/.gitignore` is the scaffold's, local to the SPA.
 
-*Decided in: [Decide stack and conventions for the minireact SPA](https://github.com/spippoli/minichord/issues/4) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9).*
+_Decided in: [Decide stack and conventions for the minireact SPA](https://github.com/spippoli/minichord/issues/4) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9)._
 
 ---
 
@@ -344,42 +343,40 @@ transport answers.
 
 ```ts
 /** An opaque handle. No Web MIDI type crosses this seam. */
-type PortRef = { id: string; name: string }
+type PortRef = { id: string; name: string };
 
 type TransportEvent =
-  | { type: 'connection'; connected: boolean }
-  | { type: 'dump'; values: readonly number[] }   // 256 raw integers, verbatim
-  | { type: 'error'; reason: TransportErrorReason }
+  | { type: "connection"; connected: boolean }
+  | { type: "dump"; values: readonly number[] } // 256 raw integers, verbatim
+  | { type: "error"; reason: TransportErrorReason };
 
 type TransportErrorReason =
-  | 'access-denied'
-  | 'unsupported'
-  | 'malformed-message'
+  "access-denied" | "unsupported" | "malformed-message";
 
 class MinichordTransport {
   constructor(seams?: {
-    requestAccess?: () => Promise<MIDIAccess>
-    queryPermission?: () => Promise<PermissionState>
-  })
+    requestAccess?: () => Promise<MIDIAccess>;
+    queryPermission?: () => Promise<PermissionState>;
+  });
 
-  static isSupported(): boolean
-  queryPermission(): Promise<PermissionState>          // 'granted' | 'denied' | 'prompt'
-  onPermissionChange(cb: (s: PermissionState) => void): () => void
-  requestAccess(): Promise<void>
+  static isSupported(): boolean;
+  queryPermission(): Promise<PermissionState>; // 'granted' | 'denied' | 'prompt'
+  onPermissionChange(cb: (s: PermissionState) => void): () => void;
+  requestAccess(): Promise<void>;
 
-  listPorts(): readonly PortRef[]
-  probe(port: PortRef, timeoutMs: number): Promise<boolean>
-  bind(port: PortRef): void
-  unbind(): void
+  listPorts(): readonly PortRef[];
+  probe(port: PortRef, timeoutMs: number): Promise<boolean>;
+  bind(port: PortRef): void;
+  unbind(): void;
 
-  sendParameter(address: number, rawValue: number): boolean
-  sendCommand(command: number, argument: number): boolean
-  requestDump(): boolean
-  wipeMemory(): boolean
-  saveToBank(bank: number): boolean
-  resetBank(bank: number): boolean
+  sendParameter(address: number, rawValue: number): boolean;
+  sendCommand(command: number, argument: number): boolean;
+  requestDump(): boolean;
+  wipeMemory(): boolean;
+  saveToBank(bank: number): boolean;
+  resetBank(bank: number): boolean;
 
-  subscribe(listener: (e: TransportEvent) => void): () => void
+  subscribe(listener: (e: TransportEvent) => void): () => void;
 }
 ```
 
@@ -427,13 +424,13 @@ Three mechanisms, and **no user-facing strings anywhere in this layer**:
 - **A `false` return** when sending while unbound. Disconnection is a normal runtime state, not a
   programming error.
 
-### 3.5 What the transport does *not* do
+### 3.5 What the transport does _not_ do
 
 - **No value conversion.** `×100`, the exponential curve and the rhythm bitmask are `domain`'s
   (§4.3). The legacy is inconsistent here — it decodes the rhythm mask inside its transport while
   leaving the curve and the multiplier to the UI layer.
 - **No neutralisation.** The legacy overwrites addresses 2/3 to 50 and 4/5/6 to 512 on every dump
-  *and writes those five values back to the device* from inside its receive handler. That policy
+  _and writes those five values back to the device_ from inside its receive handler. That policy
   moves to `state` (§5.4): a transport that alters what the device said is no longer a mirror, and
   neither its tests nor the simulator could then assert on the truth.
 - **No initial dump request.** The legacy fires `(0, 0)` the moment it finds a port. Here the
@@ -442,7 +439,7 @@ Three mechanisms, and **no user-facing strings anywhere in this layer**:
 - **No port matching.** The candidate test is a pure function in `state/connection` (§9.3).
 - **No version check.** See §9.6.
 
-*Decided in: [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Decide the connection lifecycle and its UX](https://github.com/spippoli/minichord/issues/11).*
+_Decided in: [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Decide the connection lifecycle and its UX](https://github.com/spippoli/minichord/issues/11)._
 
 ---
 
@@ -470,39 +467,39 @@ no shape variance.
 ```ts
 /** The file as it is, typo and firmware-only fields included. */
 interface RawParameter {
-  name: string
-  group: string
-  default_value: number
-  data_type: 'int' | 'float'
-  sysex_adress: number
-  curve: 'linear' | 'exponential'
-  min_value: number
-  max_value: number
-  tooltip: string
-  iterate: number
-  method: string
-  introduction_version: number
+  name: string;
+  group: string;
+  default_value: number;
+  data_type: "int" | "float";
+  sysex_adress: number;
+  curve: "linear" | "exponential";
+  min_value: number;
+  max_value: number;
+  tooltip: string;
+  iterate: number;
+  method: string;
+  introduction_version: number;
 }
 
 /** The domain model. Nothing outside this module sees RawParameter. */
 interface Parameter {
-  name: string
-  group: string
-  section: 'global' | 'harp' | 'chord'
-  address: number
-  dataType: 'int' | 'float'
-  curve: 'linear' | 'exponential'
-  min: number
-  max: number
-  defaultValue: number
-  tooltip: string
-  introducedIn: number
+  name: string;
+  group: string;
+  section: "global" | "harp" | "chord";
+  address: number;
+  dataType: "int" | "float";
+  curve: "linear" | "exponential";
+  min: number;
+  max: number;
+  defaultValue: number;
+  tooltip: string;
+  introducedIn: number;
 }
 
-const parameters: readonly Parameter[]                 // all 195, in file order
-const byAddress: ReadonlyMap<number, Parameter>        // lossless: addresses are unique
-const visibleParameters: readonly Parameter[]          // 189: group !== 'hidden'
-function isAvailable(p: Parameter, firmwareVersion: number): boolean
+const parameters: readonly Parameter[]; // all 195, in file order
+const byAddress: ReadonlyMap<number, Parameter>; // lossless: addresses are unique
+const visibleParameters: readonly Parameter[]; // 189: group !== 'hidden'
+function isAvailable(p: Parameter, firmwareVersion: number): boolean;
 ```
 
 Normalisation happens once, at the boundary: camelCase, `address` spelled correctly, `section` as
@@ -524,12 +521,12 @@ The wire carries integers. `domain` owns every translation between a wire value 
 sees, because all of them are parameterised by fields that live here.
 
 ```ts
-function wireMin(p: Parameter): number
-function wireMax(p: Parameter): number
-function positionToWire(p: Parameter, t: number): number   // t in 0..1
-function wireToPosition(p: Parameter, wire: number): number
-function format(p: Parameter, wire: number): string
-function parse(p: Parameter, text: string): number | null
+function wireMin(p: Parameter): number;
+function wireMax(p: Parameter): number;
+function positionToWire(p: Parameter, t: number): number; // t in 0..1
+function wireToPosition(p: Parameter, wire: number): number;
+function format(p: Parameter, wire: number): string;
+function parse(p: Parameter, text: string): number | null;
 ```
 
 - **Floats travel multiplied by 100.** `wire = round(value * 100)`; `value = wire / 100`, displayed
@@ -540,7 +537,7 @@ function parse(p: Parameter, text: string): number | null
   exponential parameter is an envelope time in milliseconds and none of them defaults to 0; the
   common default is 1 ms, which is exactly what the bottom of the travel gives. 42 of the 195
   parameters are exponential.
-- **The position is continuous.** The legacy walks an *integer* position over `0..max`, and that is
+- **The position is continuous.** The legacy walks an _integer_ position over `0..max`, and that is
   where its one real defect lives: near the top a single position step jumps 4991 → 5000, leaving
   **1845 of 5000 values selectable** and, with neither typing nor a value-wise arrow key, the other
   3155 unreachable by any means at all. A continuous position recovers them and changes nothing on
@@ -561,7 +558,7 @@ Encoding and decoding the mask is `domain`'s, not the transport's.
 
 The base64 preset format lives here as a pure codec; its rules are in §11.1.
 
-*Decided in: [Decide how the SPA consumes parameters.json and how its TypeScript types are produced](https://github.com/spippoli/minichord/issues/5) · [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9).*
+_Decided in: [Decide how the SPA consumes parameters.json and how its TypeScript types are produced](https://github.com/spippoli/minichord/issues/5) · [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9)._
 
 ---
 
@@ -584,7 +581,10 @@ Both slices are pure and separately testable. A merged reducer would drag 256 va
 connection test.
 
 ```ts
-function root(state: AppState, ev: Event): { state: AppState; effects: Effect[] }
+function root(
+  state: AppState,
+  ev: Event,
+): { state: AppState; effects: Effect[] };
 ```
 
 **Evaluation order is fixed rather than left implicit: `connection` first, always**, because
@@ -632,7 +632,7 @@ and that dump wins outright — no pointer exception, no pending-write exception
 > **Not:** protecting the addresses a bulk write has just sent. It was prototyped and collapses: it
 > protects 254 of 256 addresses, so the confirming dump teaches the store nothing at all, while the
 > divergence it just detected is discarded. Since §1.6 bounds silent loss at ≈2.5%, comparing
-> against the returned dump is the *only* way to notice a dropped write.
+> against the returned dump is the _only_ way to notice a dropped write.
 > ([reasoning](https://github.com/spippoli/minichord/issues/8))
 
 ### 5.4 The neutralisation, named for what it is
@@ -640,10 +640,10 @@ and that dump wins outright — no pointer exception, no pending-write exception
 On **every** dump — solicited or not, including the one that closes a preset load — the store
 forces:
 
-| address | forced to | why |
-|---|---|---|
-| 2, 3 | 50 | harp and chord volume, carrying the physical pot positions |
-| 4, 5, 6 | 512 | potentiometer storage, likewise |
+| address | forced to | why                                                        |
+| ------- | --------- | ---------------------------------------------------------- |
+| 2, 3    | 50        | harp and chord volume, carrying the physical pot positions |
+| 4, 5, 6 | 512       | potentiometer storage, likewise                            |
 
 These five values are **not a mirror of the device**. They arrive carrying wherever the physical
 knobs happen to sit, and the store overwrites them with a fiction so the knobs do not fight the UI.
@@ -712,9 +712,11 @@ Three features write many addresses at once and none of them can trust that the 
 (§10.4). **They are one module, not three implementations of the same paragraph.**
 
 ```ts
-type BulkWriteResult = { applied: number; diverged: readonly number[] }
+type BulkWriteResult = { applied: number; diverged: readonly number[] };
 
-function bulkWrite(values: ReadonlyMap<number, number>): Promise<BulkWriteResult>
+function bulkWrite(
+  values: ReadonlyMap<number, number>,
+): Promise<BulkWriteResult>;
 ```
 
 It sends the addresses unpaced, requests a dump, compares the returning dump against what it sent,
@@ -726,7 +728,7 @@ converges.
 
 Callers build a map and read a count. They do not know a dump is involved, and they do not each
 carry a copy of the exclusion list. The caller-visible difference between an import, a randomise and
-a revert is *which addresses are in the map* — everything else is this module's.
+a revert is _which addresses are in the map_ — everything else is this module's.
 
 This lives in `state/` and not in `domain/`: it awaits round trips and drives the transport, which
 is exactly what a pure layer cannot do.
@@ -742,7 +744,7 @@ reconnection all fill the store by the same path. Keeping the probe's payload wo
 two entry points, and with two candidates answering it would mean holding a dump from a port that
 may never be bound.
 
-*Decided in: [Decide who owns the 256-value state, and how writes and dumps interact](https://github.com/spippoli/minichord/issues/8) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Research: Web MIDI SysEx output throughput and latency constraints](https://github.com/spippoli/minichord/issues/3) · prototype: `prototype/store-ownership` (throwaway, may no longer exist).*
+_Decided in: [Decide who owns the 256-value state, and how writes and dumps interact](https://github.com/spippoli/minichord/issues/8) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Research: Web MIDI SysEx output throughput and latency constraints](https://github.com/spippoli/minichord/issues/3) · prototype: `prototype/store-ownership` (throwaway, may no longer exist)._
 
 ---
 
@@ -766,7 +768,7 @@ section opens the second half of the document instead of closing it. Hold these 
 
 **1. No component that draws a parameter reads the store.** The value arrives as a prop from a
 single **binding** component per parameter. This is a legibility decision, not a performance one —
-§7.6 removed the performance argument. The store's rules are *per address and over time*: the
+§7.6 removed the performance argument. The store's rules are _per address and over time_: the
 optimistic write, the dump that overrules every value except the one under an active pointer, and
 that exception falling away when the bank changes. Spread across 189 reading controls, "the address
 under an active pointer" becomes 189 pieces of local state; in one binding it is one place.
@@ -774,7 +776,7 @@ under an active pointer" becomes 189 pieces of local state; in one binding it is
 Cost, stated: every dump repaints the whole mounted section. That is only admissible because it was
 measured (§7.6). If the one-section-at-a-time architecture ever changes, re-measure.
 
-**2. No kind opts out of the repertoire.** The typeable value window, the arrows moving the *value*
+**2. No kind opts out of the repertoire.** The typeable value window, the arrows moving the _value_
 by 1 and by 10 with Shift, double-click to the factory default, hover-or-focus feeding the readout,
 the tooltip travelling as `aria-describedby` with the two state LEDs inside the same sentence, one
 tab stop on the body, `aria-disabled` rather than `disabled` on an unequipped slot, one 2 px
@@ -782,16 +784,16 @@ tab stop on the body, `aria-disabled` rather than `disabled` on an unequipped sl
 derived from the parameter, never passed in by the caller.**
 
 Six autonomous per-kind components would mean writing those eight rules six times over — which is
-precisely how the focus ring came to exist on two of six *with* the repertoire already shared.
+precisely how the focus ring came to exist on two of six _with_ the repertoire already shared.
 
 **3. The sequencer is the exception, and the exception is written down with its reason.** It is not
-a seventh kind. A column *is* a parameter (addresses 220–235) and a cell's value is a **bit**, so
+a seventh kind. A column _is_ a parameter (addresses 220–235) and a cell's value is a **bit**, so
 the arrows have no quantity to move and are free for navigation (§12.4). Without the reason on the
 page the exception reads as an inconsistency and gets "fixed".
 
 **4. Hover and focus feed the readout through the same channel, and no control has a private path
 to it.** A model where the readout derives its content from focus is not available: **the DOM has
-no `activeElement` for the pointer**, and the readout is fed by both *identically*, which is what
+no `activeElement` for the pointer**, and the readout is fed by both _identically_, which is what
 makes the tooltip reachable without a mouse. The push model is forced, not preferred.
 
 One channel with two sources needs a priority, or leaving a hover empties the strip while another
@@ -816,7 +818,7 @@ and therefore happens after React has committed.**
 stands — carrying a great deal of behaviour behind a signature of one argument:
 
 ```ts
-function focusParameter(address: number): void
+function focusParameter(address: number): void;
 ```
 
 It switches section, unfolds the plate, waits for React to commit, finds the control and moves the
@@ -839,14 +841,14 @@ same header, and it loses both decisions at once.
 
 The bar is narrow: only what a different cut would break.
 
-| component | what forces it | cardinality |
-|---|---|---|
-| the **control** | owns the repertoire of §8 and §12; six kinds must not rewrite it six times | one per parameter |
-| the **sequencer** | the declared exception: `role="grid"`, roving tabindex, a column is a parameter, a cell is a bit | one |
-| the **binding** | the only store reader per parameter; invariant 1 lives in it | one per parameter |
-| the **readout** | one push channel, hover over focus, `aria-hidden`, no private paths | **exactly one** |
-| the **gate** | before the first dump the app *is* a connection screen; afterwards the editor *is* the app; a mutually exclusive top-level branch | one |
-| the **strip** | the connection in one top-bar line, bank number and hue together in it, and the only element the bank hue reaches | one |
+| component         | what forces it                                                                                                                    | cardinality       |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| the **control**   | owns the repertoire of §8 and §12; six kinds must not rewrite it six times                                                        | one per parameter |
+| the **sequencer** | the declared exception: `role="grid"`, roving tabindex, a column is a parameter, a cell is a bit                                  | one               |
+| the **binding**   | the only store reader per parameter; invariant 1 lives in it                                                                      | one per parameter |
+| the **readout**   | one push channel, hover over focus, `aria-hidden`, no private paths                                                               | **exactly one**   |
+| the **gate**      | before the first dump the app _is_ a connection screen; afterwards the editor _is_ the app; a mutually exclusive top-level branch | one               |
+| the **strip**     | the connection in one top-bar line, bank number and hue together in it, and the only element the bank hue reaches                 | one               |
 
 Explicitly **not** obligated, said here so nobody adds them back: the **plate** (`role="group"` is
 markup, not a boundary), the **dock**, the **tablist**, and the **maintenance area** of §10.6. All
@@ -863,7 +865,7 @@ return. What the invariants do instead is carry their enforcement in their phras
 readout in the tree" and "no component drawing a parameter imports the store" are checkable by eye
 in thirty seconds; "controls must be accessible" would not be.
 
-*Decided in: [Decide how ui/ is cut into components, and whether SPEC.md names the boundaries](https://github.com/spippoli/minichord/issues/22) · [Decide keyboard navigation and accessibility across the panel](https://github.com/spippoli/minichord/issues/17) · [Verify the accessibility structure of #17 with a real screen reader](https://github.com/spippoli/minichord/issues/21) · [Measure React render performance with a full section mounted](https://github.com/spippoli/minichord/issues/19) · prototype: `prototype/parameter-control` (throwaway, may no longer exist).*
+_Decided in: [Decide how ui/ is cut into components, and whether SPEC.md names the boundaries](https://github.com/spippoli/minichord/issues/22) · [Decide keyboard navigation and accessibility across the panel](https://github.com/spippoli/minichord/issues/17) · [Verify the accessibility structure of #17 with a real screen reader](https://github.com/spippoli/minichord/issues/21) · [Measure React render performance with a full section mounted](https://github.com/spippoli/minichord/issues/19) · prototype: `prototype/parameter-control` (throwaway, may no longer exist)._
 
 ---
 
@@ -887,18 +889,18 @@ workbench won.
   default**. `fold all` / `open all` act on the current section.
 - **A folded plate still reports how many of its parameters were edited.** Folding hides noise,
   never state.
-- **Groups are merged by name.** `group` is *not* contiguous in `parameters.json` — the global
+- **Groups are merged by name.** `group` is _not_ contiguous in `parameters.json` — the global
   "Settings" group appears in two blocks, and the legacy generator, grouping without sorting, draws
   it twice (6 parameters, then 4). Merge into one plate of 10. This is a data quirk to absorb, not
   a structure to reproduce.
 
 The plates, in order, are the groups as they first appear in the file:
 
-| section | plates |
-|---|---|
-| global | Settings (10), MIDI (3), Effects (6), Potentiometer (8) |
-| harp | General (3), Oscillator (2), Envelope (6), Low pass filter (10), Transient (6), Tremolo (3), Vibrato (15), Effects (11), Output filter (10) |
-| chord | General (3), Oscillator (16), Envelope (6), Low pass filter (13), Tremolo (4), Vibrato (16), Effects (11), Rythm (21), Output filter (6) |
+| section | plates                                                                                                                                      |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| global  | Settings (10), MIDI (3), Effects (6), Potentiometer (8)                                                                                     |
+| harp    | General (3), Oscillator (2), Envelope (6), Low pass filter (10), Transient (6), Tremolo (3), Vibrato (15), Effects (11), Output filter (10) |
+| chord   | General (3), Oscillator (16), Envelope (6), Low pass filter (13), Tremolo (4), Vibrato (16), Effects (11), Rythm (21), Output filter (6)    |
 
 The Rythm plate's 21 parameters include the 16 sequencer columns, which are drawn as one grid
 (§8.3), not as 16 controls.
@@ -939,7 +941,7 @@ swapping roles between them. That cost is real and is accepted.
 
 > **Not:** a theme toggle, and **not** `localStorage`. Which panel you want is the light in the
 > room and the OS already knows it; the legacy's stored toggle predates that signal being reliable.
-> The media query is *subscribed to*, so the panel re-moulds when the OS flips, without a reload.
+> The media query is _subscribed to_, so the panel re-moulds when the OS flips, without a reload.
 > ([reasoning](https://github.com/spippoli/minichord/issues/16))
 
 **The bank hue reaches exactly one element: the bank LED in the strip.** Not the windows, not the
@@ -956,7 +958,7 @@ reading as state.
 
 `--hue` is set inline on the panel root from the live value of address 20.
 
-> **Open:** the concrete colour values behind the ~110 tokens. The token *names* and their roles are
+> **Open:** the concrete colour values behind the ~110 tokens. The token _names_ and their roles are
 > fixed by this section and §8; the hex values are not, and this document does not carry a palette.
 > What constrains them anyway: two complete sets with nothing shared, a positive LCD in the light
 > moulding, and the focus ring drawn in the LCD's own ink and legible against plastic in both
@@ -988,7 +990,7 @@ Two things worth knowing while working:
   touching no React degraded identically: it is the machine dropping its clock while the page is
   idle. The same sweep on a production build is flat. Do not chase it.
 
-*Decided in: [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Measure React render performance with a full section mounted](https://github.com/spippoli/minichord/issues/19) · [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) · prototypes: `prototype/parameter-ia`, `prototype/parameter-control`, `measure/react-render-perf` (throwaway, may no longer exist).*
+_Decided in: [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Measure React render performance with a full section mounted](https://github.com/spippoli/minichord/issues/19) · [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) · prototypes: `prototype/parameter-ia`, `prototype/parameter-control`, `measure/react-render-perf` (throwaway, may no longer exist)._
 
 ---
 
@@ -996,7 +998,7 @@ Two things worth knowing while working:
 
 ### 8.1 The taxonomy
 
-`parameters.json` carries no notion of a *kind* of control — only `data_type`, `curve` and a range —
+`parameters.json` carries no notion of a _kind_ of control — only `data_type`, `curve` and a range —
 which is why the legacy draws one range input 189 times, so that a boolean becomes a two-position
 fader and a waveform becomes an unlabelled 0..11.
 
@@ -1014,14 +1016,14 @@ The rules, in order, first match wins:
 5. `int` and `linear` and `max - min <= 16` → `stepper`
 6. otherwise → `slider`
 
-| kind | count | what it is |
-|---|---|---|
-| `toggle` | 6 | an interrupter, not a two-position fader |
-| `select` | 14 | a small enumeration whose values have names |
-| `stepper` | 11 | a small ordinal with an order but no names |
-| `slider` | 138 | the continuous majority |
-| `picker` | 4 | a value that is the SysEx address of another parameter |
-| `sequencer` | 16 | the 7-bit masks at 220–235, drawn as one grid |
+| kind        | count | what it is                                             |
+| ----------- | ----- | ------------------------------------------------------ |
+| `toggle`    | 6     | an interrupter, not a two-position fader               |
+| `select`    | 14    | a small enumeration whose values have names            |
+| `stepper`   | 11    | a small ordinal with an order but no names             |
+| `slider`    | 138   | the continuous majority                                |
+| `picker`    | 4     | a value that is the SysEx address of another parameter |
+| `sequencer` | 16    | the 7-bit masks at 220–235, drawn as one grid          |
 
 **The counts are a checksum, not a listing.** They total 189 and are asserted by a Vitest test
 against the real `parameters.json` — which is the point of writing them down. This document
@@ -1036,21 +1038,21 @@ name is the label (key signatures, shufflings). Where it has neither, it stays a
 
 - **The value window is a typeable field.** Click and type, `Enter` commits, `Escape` reverts,
   blur commits. The legacy offers nothing of the sort.
-- **The arrow keys nudge the value by one, Shift by ten** — deliberately the *value*, not the
+- **The arrow keys nudge the value by one, Shift by ten** — deliberately the _value_, not the
   slider position. This is what makes the 3155 unreachable values of §4.3 reachable.
 - **Double-click returns a control to its factory default.** The dock already offers "back to what
   is stored"; this is the other origin.
-- **Every tooltip lands in the single readout**, fed by hover *or* keyboard focus, identically.
+- **Every tooltip lands in the single readout**, fed by hover _or_ keyboard focus, identically.
   Tooltips run to 318 characters (median 37; 29 of the 189 exceed 80), so one fixed strip holds the
   longest without covering the controls being compared, and it is what makes the tooltip reachable
   without a mouse at all. The legacy delivers tooltips through the `title` attribute alone.
 - **A dropdown takes the readout's column** in the plate — a window repeating the word already on
   screen spends a column of a dense panel on nothing. The exception is an unequipped slot, where
   there is no choice to read back and the window is needed; that case is real (`chord key
-  signature` and the harp transient `waveform` both arrived in firmware 6).
+signature` and the harp transient `waveform` both arrived in firmware 6).
 - **Menus are right-aligned**, so a plate has one edge where values are found.
 
-  *Conditional:* use the native `<select>`. If Chromium does not honour `text-align` inside the
+  _Conditional:_ use the native `<select>`. If Chromium does not honour `text-align` inside the
   open popup — unverified at the time of writing; the closed menu does align — replace it with a
   hand-drawn listbox that preserves the whole repertoire above. You decide nothing here; you look.
 
@@ -1077,7 +1079,7 @@ full-width plate. The legacy drew them as sixteen unrelated integer sliders.
 
 Addresses 10, 12, 14 and 16 hold **the SysEx address of another parameter** — which one the
 physical knob drives. The legacy asks you to pick it by dragging a fader across 21..219, so today
-you choose *which parameter to control* by dragging a cursor over an address number.
+you choose _which parameter to control_ by dragging a cursor over an address number.
 
 A picker lists its targets **by name**: every visible parameter with an address in 21..219, in
 address order, plus "none" at rest.
@@ -1087,7 +1089,7 @@ survive a value its declared range excludes — do not clamp it into range.
 
 ### 8.5 `bank color` (address 20)
 
-The one parameter whose value *is* a colour. It keeps its kind — a `slider`, so the counts above
+The one parameter whose value _is_ a colour. It keeps its kind — a `slider`, so the counts above
 are untouched — and gains two things the data cannot express: **the slot carries the spectrum and
 the cap is filled with the chosen hue**, and a **swatch at full saturation** sits beside it, since
 the firmware drives the physical LED at full saturation. A 0..360 fader in a grey slot asks you to
@@ -1104,17 +1106,17 @@ Fourteen addresses carry a named enumeration. **No label here was invented** —
 out of the firmware source or spelled out in the parameter's own tooltip. The labels themselves are
 in Appendix A.
 
-| addresses | enumeration | source |
-|---|---|---|
-| 42, 59, 62, 93, 100, 122, 125, 128, 152, 156, 160 | the twelve waveforms | the `waveform_array` comments in `firmware/src/main.cpp`, confirmed verbatim in every waveform tooltip |
-| 35 | the twelve key signatures | `firmware/src/main.cpp` |
-| 40 | the seven harp shufflings | the row comments of `harp_shuffling_array` |
-| 120 | the six chord shufflings | the row comments of `chord_shuffling_array` |
+| addresses                                         | enumeration               | source                                                                                                 |
+| ------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 42, 59, 62, 93, 100, 122, 125, 128, 152, 156, 160 | the twelve waveforms      | the `waveform_array` comments in `firmware/src/main.cpp`, confirmed verbatim in every waveform tooltip |
+| 35                                                | the twelve key signatures | `firmware/src/main.cpp`                                                                                |
+| 40                                                | the seven harp shufflings | the row comments of `harp_shuffling_array`                                                             |
+| 120                                               | the six chord shufflings  | the row comments of `chord_shuffling_array`                                                            |
 
 Waveform index 4 maps onto a different Teensy constant than its position suggests; this is
 irrelevant to the app, which sends the index, but it is why the list is not simply the Teensy enum.
 
-*Decided in: [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9) · prototype: `prototype/parameter-control` (throwaway, may no longer exist).*
+_Decided in: [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9) · prototype: `prototype/parameter-control` (throwaway, may no longer exist)._
 
 ---
 
@@ -1141,11 +1143,11 @@ disconnect does **not** bring it back — by then there are values worth looking
 - Otherwise `navigator.permissions.query({ name: 'midi', sysex: true })` answers `granted` /
   `denied` / `prompt` **without raising the prompt**, and the three cases get three behaviours:
 
-| answer | behaviour |
-|---|---|
-| `granted` | call `requestMIDIAccess` at once; the gate flickers and is gone |
-| `prompt` | show an explicit **Connect** button, so the browser prompt is the visible consequence of an action |
-| `denied` | do not call at all; name the recovery precisely (the lock icon in the address bar → MIDI → Allow) |
+| answer    | behaviour                                                                                          |
+| --------- | -------------------------------------------------------------------------------------------------- |
+| `granted` | call `requestMIDIAccess` at once; the gate flickers and is gone                                    |
+| `prompt`  | show an explicit **Connect** button, so the browser prompt is the visible consequence of an action |
+| `denied`  | do not call at all; name the recovery precisely (the lock icon in the address bar → MIDI → Allow)  |
 
 The `prompt` case is deliberate: since Chromium M121 all MIDI access prompts as a single per-site
 permission covering SysEx, and an unrequested prompt two seconds after page load is the one people
@@ -1174,13 +1176,13 @@ Since only cable 1 carries SysEx, the device can answer the question we cannot:
    stays silent and excludes itself, whatever its name.
 3. **Count the answers.**
 
-| answers | state | what happens |
-|---|---|---|
-| 0 | `no-device` | one state for "no candidate by name" and "candidates stayed mute" alike — for the user they are the same thing with the same remedy. A **manual picker over *all* MIDI output ports** is offered; picking one probes it, and if it stays mute we say so and remain disconnected. |
-| 1 | bind | the winner is the control port |
-| 2+ | `choose` | two minichords on one machine is legitimate, not an error. Show both port names and let the user click. No invented tie-break — "the first one" means nothing. |
+| answers | state       | what happens                                                                                                                                                                                                                                                                     |
+| ------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0       | `no-device` | one state for "no candidate by name" and "candidates stayed mute" alike — for the user they are the same thing with the same remedy. A **manual picker over _all_ MIDI output ports** is offered; picking one probes it, and if it stays mute we say so and remain disconnected. |
+| 1       | bind        | the winner is the control port                                                                                                                                                                                                                                                   |
+| 2+      | `choose`    | two minichords on one machine is legitimate, not an error. Show both port names and let the user click. No invented tie-break — "the first one" means nothing.                                                                                                                   |
 
-**Never "connected blind".** Being connected *means* having received a dump; there is no
+**Never "connected blind".** Being connected _means_ having received a dump; there is no
 "port found but mute" state to dress up as success.
 
 **The choice is not remembered across loads.** Port ids are not verified stable across a replug on
@@ -1257,25 +1259,25 @@ unequipped slot; without it, "this control is missing" reads as a bug.
 
 Before the first dump — the gate:
 
-| state | entered by | shows | exit |
-|---|---|---|---|
-| `unsupported` | `requestMIDIAccess` absent | the single message, no button | none |
-| `blocked` | permission `denied` | where to re-open the permission | `PermissionStatus.onchange` |
-| `idle` | permission `prompt` | the **Connect** button | click → browser prompt |
-| `searching` | access granted | that we are looking | the probe answers |
-| `no-device` | no port answered | how to connect it, plus the manual picker | `statechange`, or a manual pick |
-| `choose` | two or more answered | the port names | click |
+| state         | entered by                 | shows                                     | exit                            |
+| ------------- | -------------------------- | ----------------------------------------- | ------------------------------- |
+| `unsupported` | `requestMIDIAccess` absent | the single message, no button             | none                            |
+| `blocked`     | permission `denied`        | where to re-open the permission           | `PermissionStatus.onchange`     |
+| `idle`        | permission `prompt`        | the **Connect** button                    | click → browser prompt          |
+| `searching`   | access granted             | that we are looking                       | the probe answers               |
+| `no-device`   | no port answered           | how to connect it, plus the manual picker | `statechange`, or a manual pick |
+| `choose`      | two or more answered       | the port names                            | click                           |
 
 After the first dump — the strip:
 
-| state | shows | controls |
-|---|---|---|
-| `connected` | port and firmware version | live |
-| `interrupted` | that we are retrying | read-only; values and LEDs still readable |
+| state         | shows                     | controls                                  |
+| ------------- | ------------------------- | ----------------------------------------- |
+| `connected`   | port and firmware version | live                                      |
+| `interrupted` | that we are retrying      | read-only; values and LEDs still readable |
 
 `interrupted` returns to `connected` by itself.
 
-*Decided in: [Decide the connection lifecycle and its UX](https://github.com/spippoli/minichord/issues/11) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Research: Web MIDI on Chrome Android — sysex permissions and USB device enumeration](https://github.com/spippoli/minichord/issues/2) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7).*
+_Decided in: [Decide the connection lifecycle and its UX](https://github.com/spippoli/minichord/issues/11) · [Decide where the connection state machine lives across the layers of #4](https://github.com/spippoli/minichord/issues/18) · [Draw the transport boundary between the SysEx layer and the app](https://github.com/spippoli/minichord/issues/6) · [Research: Web MIDI on Chrome Android — sysex permissions and USB device enumeration](https://github.com/spippoli/minichord/issues/2) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7)._
 
 ---
 
@@ -1285,7 +1287,7 @@ After the first dump — the strip:
 
 The firmware has no load-bank command (§1.2), so **bank navigation belongs to the physical buttons
 alone and the app never offers it.** The legacy's bank dropdown was never a navigator: it is the
-*target* of the save, and touching it silently redirects where your work lands.
+_target_ of the save, and touching it silently redirects where your work lands.
 
 ### 10.2 Saving targets the current bank only
 
@@ -1294,7 +1296,7 @@ One action, no target selector. Saving sends `(2, currentBank)`.
 > **Not:** a bank selector on save. The legacy has one, so this is a deliberate loss of parity — you
 > must now walk to bank 7 with the physical buttons before saving into it. Keeping the target and
 > naming it honestly ("copy to bank N and go there") was considered: on the wire `save_config` sets
-> the current bank before reloading, so the gesture *always* moves you, and an app-side target is
+> the current bank before reloading, so the gesture _always_ moves you, and an app-side target is
 > app-driven navigation through the destructive door. It also moves the floor under the dock.
 > ([reasoning](https://github.com/spippoli/minichord/issues/12))
 
@@ -1303,10 +1305,10 @@ to need an acknowledgement and short enough that it must not be a modal progress
 
 ### 10.3 The reference the "unsaved" LED compares against
 
-**The reference is the last state known to have been *loaded*.**
+**The reference is the last state known to have been _loaded_.**
 
 A dump never says where it came from, but two species carry opposite meanings: the one closing
-`load_config` *is* the flash file, while the one answering `(0, 0)` is live state with unsaved edits
+`load_config` _is_ the flash file, while the one answering `(0, 0)` is live state with unsaved edits
 included. Baselining on the latter would silently declare everything saved on every connection
 probe and every one-second retry.
 
@@ -1335,11 +1337,11 @@ until the first bank change, meaning dead LEDs and an empty dock for a whole ses
 
 ### 10.4 Confirmation scales to the blast radius, and is never a modal
 
-| action | command | confirmation |
-|---|---|---|
-| save | `(2, currentBank)` | **none.** It is the intended act, and the LEDs already state exactly what will change. |
-| reset bank | `(3, currentBank)` | **armed in place**: the button becomes its own question, a second click executes, it disarms after a few seconds. No overlay, no focus steal, keyboard-reachable, and the panel you are about to wipe stays visible. |
-| wipe memory | `(1, _)` | a **typed confirmation**, in the maintenance area (§10.6), away from the editing row. A different friction, not merely more of the same: it repairs corrupt flash, it is not a gesture of editing. |
+| action      | command            | confirmation                                                                                                                                                                                                         |
+| ----------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| save        | `(2, currentBank)` | **none.** It is the intended act, and the LEDs already state exactly what will change.                                                                                                                               |
+| reset bank  | `(3, currentBank)` | **armed in place**: the button becomes its own question, a second click executes, it disarms after a few seconds. No overlay, no focus steal, keyboard-reachable, and the panel you are about to wipe stays visible. |
+| wipe memory | `(1, _)`           | a **typed confirmation**, in the maintenance area (§10.6), away from the editing row. A different friction, not merely more of the same: it repairs corrupt flash, it is not a gesture of editing.                   |
 
 This does not contradict §9.7's no-modal rule, which governs messages the app raises on its own
 initiative, not a question asked in response to a click. A native `confirm()` is the worst option
@@ -1386,7 +1388,7 @@ count is the dock count in the instant before the dump.
 A region of the panel, away from the editing row, holding: **wipe memory** with its typed
 confirmation, and the preset **export** and **import** fields of §11.
 
-*Decided in: [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Decide who owns the 256-value state, and how writes and dumps interact](https://github.com/spippoli/minichord/issues/8).*
+_Decided in: [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Decide who owns the 256-value state, and how writes and dumps interact](https://github.com/spippoli/minichord/issues/8)._
 
 ---
 
@@ -1396,7 +1398,7 @@ confirmation, and the preset **export** and **import** fields of §11.
 
 A preset code is base64 of `v0;v1;…;v254;` — **255 values, not 256**, with the trailing separator.
 The legacy's own generator loops to 254, so address 255 never leaves; `split(";")` then yields 255
-values plus a trailing empty string, and *that* is what satisfies its `length != 256` check. On
+values plus a trailing empty string, and _that_ is what satisfies its `length != 256` check. On
 import that empty element coerces to 0, which is why **every legacy import writes 0 to address
 255**.
 
@@ -1420,12 +1422,12 @@ Two rules about content:
 
 ### 11.2 Validation rejects structure, never range
 
-| rejected | accepted |
-|---|---|
-| undecodable base64 | anything outside `min_value`/`max_value` |
-| a non-integer field | |
-| a value count outside 254–256 | |
-| a value outside the wire range 0–16383 | |
+| rejected                               | accepted                                 |
+| -------------------------------------- | ---------------------------------------- |
+| undecodable base64                     | anything outside `min_value`/`max_value` |
+| a non-integer field                    |                                          |
+| a value count outside 254–256          |                                          |
+| a value outside the wire range 0–16383 |                                          |
 
 > **Not:** clamping imported values into the declared `min_value`/`max_value`. The legacy editor is
 > strict here and it is wrong: **31 of the 43 published presets violate their own declared minimum**
@@ -1457,7 +1459,7 @@ second round** — a second loss on the same address is under 0.1% given the ≈
 round would not be fighting packet loss, it would be fighting the firmware normalising a value. If
 anything still diverges, the strip says how many and stops.
 
-This repair round exists *only* because a bulk write is not self-confirming (§1.6). Without that
+This repair round exists _only_ because a bulk write is not self-confirming (§1.6). Without that
 measurement it would read as paranoia. It is written here, at its largest caller, and shared from
 §5.8 by the two others.
 
@@ -1484,7 +1486,7 @@ no `alert()`, all of which the legacy uses.
 **The gaussian is centred on the live state.**
 
 > **Not:** centring on a preset drawn at random from `shared_presets.json`, which is what the legacy
-> does on *every* click, announcing the seed only to the console. Centring on what is currently in
+> does on _every_ click, announcing the seed only to the console. Centring on what is currently in
 > the bank makes randomising a mutation of what you are hearing, composes with the dock (revert-all
 > undoes it), turns repeated clicks into an exploratory walk instead of disconnected jumps, and
 > drops a dependency on a minishop file that is out of scope for this app.
@@ -1497,28 +1499,28 @@ no `alert()`, all of which the legacy uses.
   in the section you are looking at rather than as 171 rows nobody will read.
 - **One number, one strategy per kind** — because several of these values are not quantities:
 
-| kind | rule |
-|---|---|
-| `slider`, `stepper` | `σ = range × weirdness`, gaussian around the current value |
-| `toggle` | flips with probability `weirdness` |
-| `select`, `picker` | changes with probability `weirdness`, then picks uniformly among the *other* entries |
-| `sequencer` | each of the 16 × 7 steps flips with probability `weirdness` |
+| kind                | rule                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------ |
+| `slider`, `stepper` | `σ = range × weirdness`, gaussian around the current value                           |
+| `toggle`            | flips with probability `weirdness`                                                   |
+| `select`, `picker`  | changes with probability `weirdness`, then picks uniformly among the _other_ entries |
+| `sequencer`         | each of the 16 × 7 steps flips with probability `weirdness`                          |
 
-  A gaussian on a `select` picks the adjacent index, which for the twelve waveforms is an arbitrary
-  table order; on a `picker` it would pick a neighbouring *SysEx address* (§8.4).
+A gaussian on a `select` picks the adjacent index, which for the twelve waveforms is an arbitrary
+table order; on a `picker` it would pick a neighbouring _SysEx address_ (§8.4).
 
 - **The pinned list stays in code**, beside the taxonomy, and is not user-editable. It is a client
   preference, not a device fact — `parameters.json` is the contract shared with the firmware. It is
   grouped by the reason a list of numbers in JSON could not carry:
 
-| pinned | why |
-|---|---|
-| everything below 19 | not sound |
-| **20** (`bank color`) | the bank's identity — a dice roll over the sound must not rename the bank, and the *physical* LED moves too, and stays moved until the bank is saved or reloaded. The legacy's threshold is `idx < 19` while its own comment says 21, so today it rerolls the hue on every click. |
-| 32 (`led attenuation`) | the panel LED |
-| 33, 34, 35 | musical rather than timbral choices |
-| 41, 97, 197 | output gains — hearing |
-| 106, 107, 108 | MIDI routing |
+| pinned                 | why                                                                                                                                                                                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| everything below 19    | not sound                                                                                                                                                                                                                                                                         |
+| **20** (`bank color`)  | the bank's identity — a dice roll over the sound must not rename the bank, and the _physical_ LED moves too, and stays moved until the bank is saved or reloaded. The legacy's threshold is `idx < 19` while its own comment says 21, so today it rerolls the hue on every click. |
+| 32 (`led attenuation`) | the panel LED                                                                                                                                                                                                                                                                     |
+| 33, 34, 35             | musical rather than timbral choices                                                                                                                                                                                                                                               |
+| 41, 97, 197            | output gains — hearing                                                                                                                                                                                                                                                            |
+| 106, 107, 108          | MIDI routing                                                                                                                                                                                                                                                                      |
 
 - **No confirmation, but a one-shot undo.** Asking before a gesture meant to be repeated ten times
   in a row would kill it. The first click randomises; immediately after, the button offers to go
@@ -1538,7 +1540,7 @@ Credit to TerminalWaltz stays in the module as **declared inspiration**, without
 without pulling GPLv3 into a BSD-3 app. Today that attribution lives only in a two-line comment in
 the legacy `index.js`; the repository has no `LICENSE` file at all.
 
-*Decided in: [Decide the preset code and random generator UX](https://github.com/spippoli/minichord/issues/13) · [Decide who owns the 256-value state, and how writes and dumps interact](https://github.com/spippoli/minichord/issues/8) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12).*
+_Decided in: [Decide the preset code and random generator UX](https://github.com/spippoli/minichord/issues/13) · [Decide who owns the 256-value state, and how writes and dumps interact](https://github.com/spippoli/minichord/issues/8) · [Build a throwaway minichord protocol simulator](https://github.com/spippoli/minichord/issues/7) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16) · [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12)._
 
 ---
 
@@ -1554,7 +1556,7 @@ A chord section — the worst case, since only one section is mounted — is **9
 controls, 9 plate headers, 1 sequencer. Drawn the naive way, with every focusable part in the
 order, it would be 269.
 
-That figure is an *outcome*, not a target: it changes by itself the day a parameter is added to
+That figure is an _outcome_, not a target: it changes by itself the day a parameter is added to
 `parameters.json`. It is here as evidence for the decisions below, not as a budget.
 
 ### 12.2 One control, one tab stop
@@ -1567,7 +1569,7 @@ The **body** — fader, rocker, menu, picker, stepper — is the only stop.
   that work by value, and the buttons are a pointer affordance.
 
 Rejected: leaving every part in the order (honest, but Tab stops being navigation at 269 stops),
-and one stop per *plate* with arrows moving between controls — ruled out because the arrows are
+and one stop per _plate_ with arrows moving between controls — ruled out because the arrows are
 already spent on the value (§8.2).
 
 The cost is stated rather than repaired: with Tab no longer walking into the value window by
@@ -1576,7 +1578,7 @@ said** (Appendix A.4).
 
 ### 12.3 Reaching a plate costs no new vocabulary
 
-- **`Ctrl+K` then `Tab` lands on the first *matching control***, not on the next button in DOM
+- **`Ctrl+K` then `Tab` lands on the first _matching control_**, not on the next button in DOM
   order. Without this it crosses `fold all`, `open all`, the strip and the readout first — four or
   five stops of friction on every search.
 - **`fold all` stays the pruning tool** for browsing rather than searching, reducing a chord section
@@ -1586,7 +1588,7 @@ said** (Appendix A.4).
 - **The dock's jump link moves focus** onto the control, after switching section and unfolding the
   plate — it calls `focusParameter` (§6.1, invariant 6) and owns none of that itself. Without it the
   link moves the eye and not the hand — and the hand could not follow anyway, because the dock sits
-  *after* the grid in DOM order, so Tab from a dock link leaves the document.
+  _after_ the grid in DOM order, so Tab from a dock link leaves the document.
 - **A skip link is the panel's first stop** — to the dock and back. Reaching the dock otherwise
   means crossing all 96 controls of a chord section. It is the oldest mechanism on the web,
   discovered by pressing Tab, and it costs no new key.
@@ -1618,14 +1620,14 @@ checkbox` tree; this was verified.
 
 > **Not:** a live region on the readout. It is the natural instinct, and it is wrong: the reader has
 > already announced the control on focus, and the region fires again, out of order. Verified in
-> practice — the description lands after name and value, once, and is *not* re-read on every arrow
+> practice — the description lands after name and value, once, and is _not_ re-read on every arrow
 > press.
 > ([reasoning](https://github.com/spippoli/minichord/issues/17))
 
 - The **readout is `aria-hidden`**. It is a visual convention a reader has no reason to look at, and
   the same words arrive as the control's own description. Verified to cost a reader nothing.
 - **The `aria-describedby` target must itself be `aria-hidden`.** Chromium still computes the
-  description from hidden text, and without it the same sentence is *also* read as loose text inside
+  description from hidden text, and without it the same sentence is _also_ read as loose text inside
   the plate — the duplication that marking the readout hidden was meant to avoid.
 - **Every read-only value window is `aria-hidden`.** An `<output>` element maps to `role="status"`,
   which is a live region firing on every value change — the very antipattern rejected above. This
@@ -1676,7 +1678,7 @@ reasoning alone:
 - **The parameter's name and address are loose text in front of every control** (the visual label),
   so the name is heard twice in browse mode. Left as it is; noticed rather than decided.
 
-*Decided in: [Decide keyboard navigation and accessibility across the panel](https://github.com/spippoli/minichord/issues/17) · [Verify the accessibility structure of #17 with a real screen reader](https://github.com/spippoli/minichord/issues/21) · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9) · prototype: `prototype/parameter-control` (throwaway, may no longer exist).*
+_Decided in: [Decide keyboard navigation and accessibility across the panel](https://github.com/spippoli/minichord/issues/17) · [Verify the accessibility structure of #17 with a real screen reader](https://github.com/spippoli/minichord/issues/21) · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) · [Design the information architecture for 195 parameters](https://github.com/spippoli/minichord/issues/9) · prototype: `prototype/parameter-control` (throwaway, may no longer exist)._
 
 ---
 
@@ -1687,9 +1689,9 @@ reasoning alone:
 The complete index of `**Open:**` markers. Nothing else in this document is deliberately
 unspecified above the altitude declared in §0.
 
-| what is free | where |
-|---|---|
-| the concrete colour values behind the panel's ~110 tokens | §7.4 |
+| what is free                                              | where |
+| --------------------------------------------------------- | ----- |
+| the concrete colour values behind the panel's ~110 tokens | §7.4  |
 
 ### 13.2 Out of scope
 
@@ -1712,7 +1714,7 @@ Not fog, and not a to-do list: work consciously ruled outside this app.
 - **Offline editing.** No device, no state (§5.2).
 - **Fixing the root `.gitignore`** (§2.6).
 
-*Decided in: [Map: a React + Vite SPA replacing the minicontrol editor](https://github.com/spippoli/minichord/issues/1) · [Decide how ui/ is cut into components, and whether SPEC.md names the boundaries](https://github.com/spippoli/minichord/issues/22) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16).*
+_Decided in: [Map: a React + Vite SPA replacing the minicontrol editor](https://github.com/spippoli/minichord/issues/1) · [Decide how ui/ is cut into components, and whether SPEC.md names the boundaries](https://github.com/spippoli/minichord/issues/22) · [Decide the panel's visual language: bank hue and dark mode](https://github.com/spippoli/minichord/issues/16)._
 
 ---
 
@@ -1722,59 +1724,59 @@ Everything the user reads that is not taken from `parameters.json`. This appendi
 it is the one part of the app an implementer would otherwise invent without noticing they were
 deciding.
 
-Sentence case throughout, no exclamation marks, no "oops". The device is *the minichord*, lower
+Sentence case throughout, no exclamation marks, no "oops". The device is _the minichord_, lower
 case, as the product string spells it.
 
 ### A.1 The kinds
 
 Used in documentation and in the readout's kind note. Not shown as a label on any control.
 
-| kind | name |
-|---|---|
-| `toggle` | switch |
-| `select` | menu |
-| `stepper` | stepper |
-| `slider` | fader |
-| `picker` | target picker |
-| `sequencer` | step grid |
+| kind        | name          |
+| ----------- | ------------- |
+| `toggle`    | switch        |
+| `select`    | menu          |
+| `stepper`   | stepper       |
+| `slider`    | fader         |
+| `picker`    | target picker |
+| `sequencer` | step grid     |
 
 ### A.2 The gate
 
-| state | heading | body |
-|---|---|---|
-| `unsupported` | This browser cannot reach the minichord | The minichord is edited over the Web MIDI API, which this browser does not implement. Open this page in Chrome or Edge. |
-| `blocked` | MIDI access is blocked | This site is not allowed to use MIDI. Click the icon at the left of the address bar, set MIDI to Allow, and this page will carry on by itself. |
-| `idle` | Connect your minichord | Plug the minichord in, turn it on, and press Connect. Your browser will ask for permission to use MIDI. |
-| `searching` | Looking for the minichord… | Asking every MIDI port whether it is a minichord. |
-| `no-device` | No minichord answered | Check that it is plugged in and turned on. If it is, pick its port below — some systems name it in a way this page does not recognise. |
-| `choose` | More than one minichord answered | Pick the one you want to edit. |
+| state         | heading                                 | body                                                                                                                                           |
+| ------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unsupported` | This browser cannot reach the minichord | The minichord is edited over the Web MIDI API, which this browser does not implement. Open this page in Chrome or Edge.                        |
+| `blocked`     | MIDI access is blocked                  | This site is not allowed to use MIDI. Click the icon at the left of the address bar, set MIDI to Allow, and this page will carry on by itself. |
+| `idle`        | Connect your minichord                  | Plug the minichord in, turn it on, and press Connect. Your browser will ask for permission to use MIDI.                                        |
+| `searching`   | Looking for the minichord…              | Asking every MIDI port whether it is a minichord.                                                                                              |
+| `no-device`   | No minichord answered                   | Check that it is plugged in and turned on. If it is, pick its port below — some systems name it in a way this page does not recognise.         |
+| `choose`      | More than one minichord answered        | Pick the one you want to edit.                                                                                                                 |
 
 Buttons: **Connect** · **Pick a port** · **Try again**.
 
-Field labels in `no-device`: *MIDI output port* for the manual picker.
+Field labels in `no-device`: _MIDI output port_ for the manual picker.
 
-After a manual pick that stays mute: *That port did not answer. It is either not a minichord, or not
-its control port.*
+After a manual pick that stays mute: _That port did not answer. It is either not a minichord, or not
+its control port._
 
-While probing after a manual pick: *Asking that port…*
+While probing after a manual pick: _Asking that port…_
 
 ### A.3 The strip
 
-| situation | line |
-|---|---|
-| connected | `{port name} · firmware {n} · bank {1–12}` |
-| interrupted | Disconnected — waiting for the minichord to come back. Your edits are on screen but cannot be sent. |
-| reconnected, nothing lost | Reconnected — bank {n}. |
-| reconnected, edits lost | Reconnected on bank {n}. The minichord restarted and reloaded from flash, so {k} unsaved changes are gone. |
-| bank changed with unsaved edits | Bank {n} loaded — {k} unsaved changes lost. |
-| saved | Saved to bank {n}. |
-| bank reset | Bank {n} reset to factory. |
-| memory wiped | All banks reset to factory. |
-| preset applied cleanly | Preset applied. |
-| preset applied with divergence | Preset applied, but {k} values did not take. Try again, or check the minichord. |
+| situation                       | line                                                                                                       |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| connected                       | `{port name} · firmware {n} · bank {1–12}`                                                                 |
+| interrupted                     | Disconnected — waiting for the minichord to come back. Your edits are on screen but cannot be sent.        |
+| reconnected, nothing lost       | Reconnected — bank {n}.                                                                                    |
+| reconnected, edits lost         | Reconnected on bank {n}. The minichord restarted and reloaded from flash, so {k} unsaved changes are gone. |
+| bank changed with unsaved edits | Bank {n} loaded — {k} unsaved changes lost.                                                                |
+| saved                           | Saved to bank {n}.                                                                                         |
+| bank reset                      | Bank {n} reset to factory.                                                                                 |
+| memory wiped                    | All banks reset to factory.                                                                                |
+| preset applied cleanly          | Preset applied.                                                                                            |
+| preset applied with divergence  | Preset applied, but {k} values did not take. Try again, or check the minichord.                            |
 
-`{k}` is always a count, and the singular is spelled out: *1 unsaved change*, *1 value did not
-take*.
+`{k}` is always a count, and the singular is spelled out: _1 unsaved change_, _1 value did not
+take_.
 
 ### A.4 The readout
 
@@ -1783,19 +1785,19 @@ Resting line, when nothing is hovered or focused:
 > Point at a control, or tab to one, and it explains itself here.
 
 The where-line is `{section} / {group} / {name}` with the raw address after it, and for a sequencer
-cell `{section} / {group} / {name} — step {s}, note {n}` (plus *out of cycle* when the step is past
+cell `{section} / {group} / {name} — step {s}, note {n}` (plus _out of cycle_ when the step is past
 `cycle length`).
 
 The kind note, appended after the tooltip:
 
-| kind | note |
-|---|---|
-| `toggle` | on / off |
-| `select` | pick a value by name |
-| `stepper` | the arrow keys step the value; Enter types it |
-| `slider` | drag, use the arrow keys, or press Enter to type the value |
-| `picker` | points at another parameter |
-| `sequencer` | one step of the pattern |
+| kind        | note                                                       |
+| ----------- | ---------------------------------------------------------- |
+| `toggle`    | on / off                                                   |
+| `select`    | pick a value by name                                       |
+| `stepper`   | the arrow keys step the value; Enter types it              |
+| `slider`    | drag, use the arrow keys, or press Enter to type the value |
+| `picker`    | points at another parameter                                |
+| `sequencer` | one step of the pattern                                    |
 
 An unequipped slot replaces the note with:
 
@@ -1807,62 +1809,62 @@ An unequipped slot replaces the note with:
 One sentence, produced by the single producer of §6.1 invariant 5, in this order, joined with `. `
 and ending in a full stop:
 
-1. the sequencer note, when the control is a cell — *step {s}, note {n}*;
-2. *Not on this device: this parameter arrived in firmware {n} and the connected minichord is
-   older* — when unequipped;
+1. the sequencer note, when the control is a cell — _step {s}, note {n}_;
+2. _Not on this device: this parameter arrived in firmware {n} and the connected minichord is
+   older_ — when unequipped;
 3. the parameter's `tooltip`;
-4. *changed from the stored bank* — when the amber LED is lit;
-5. *differs from the factory default* — when the blue LED is lit.
+4. _changed from the stored bank_ — when the amber LED is lit;
+5. _differs from the factory default_ — when the blue LED is lit.
 
 The section and the group are deliberately **absent**: the plate's `role="group"` announces them
 once on entry (§12.5).
 
 ### A.6 The panel chrome
 
-| element | string |
-|---|---|
-| section tabs | Global · Harp · Chord |
-| tab match count | `{n} matches` (title attribute; the count itself is the LED) |
-| search field | placeholder *Search this section* · label *Search* |
-| plate header, edited count | `{n} edited` |
-| fold controls | Fold all · Open all |
-| randomise button | Randomise · after a click, Undo randomise |
-| `weirdness` control label | weirdness |
-| skip link | Skip to the edit buffer · Back to the panel |
-| dock heading | Edit buffer |
-| dock, empty | Nothing changed since this bank was loaded. |
-| dock row | `{name}` · `{stored} → {current}` · Revert |
-| dock, revert everything | Revert all |
-| dock, the fiction line | Harp volume, chord volume and the three potentiometer slots are physical knobs on the minichord. This page does not show them, and does not change them. |
-| picker resting value | none |
-| out-of-cycle step | out of cycle |
+| element                    | string                                                                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| section tabs               | Global · Harp · Chord                                                                                                                                    |
+| tab match count            | `{n} matches` (title attribute; the count itself is the LED)                                                                                             |
+| search field               | placeholder _Search this section_ · label _Search_                                                                                                       |
+| plate header, edited count | `{n} edited`                                                                                                                                             |
+| fold controls              | Fold all · Open all                                                                                                                                      |
+| randomise button           | Randomise · after a click, Undo randomise                                                                                                                |
+| `weirdness` control label  | weirdness                                                                                                                                                |
+| skip link                  | Skip to the edit buffer · Back to the panel                                                                                                              |
+| dock heading               | Edit buffer                                                                                                                                              |
+| dock, empty                | Nothing changed since this bank was loaded.                                                                                                              |
+| dock row                   | `{name}` · `{stored} → {current}` · Revert                                                                                                               |
+| dock, revert everything    | Revert all                                                                                                                                               |
+| dock, the fiction line     | Harp volume, chord volume and the three potentiometer slots are physical knobs on the minichord. This page does not show them, and does not change them. |
+| picker resting value       | none                                                                                                                                                     |
+| out-of-cycle step          | out of cycle                                                                                                                                             |
 
 ### A.7 Banks, presets, maintenance
 
-| element | string |
-|---|---|
-| save button | Save to bank {n} |
-| reset button, at rest | Reset bank {n} |
-| reset button, armed | Click again to reset bank {n} to factory |
-| reset, the escape hatch beside it | Copy this bank's preset code first |
-| wipe, heading | Wipe all memory |
-| wipe, body | This resets all 12 banks to the factory sounds. It cannot be undone. Type WIPE to confirm. |
-| wipe button | Wipe all banks |
-| export field label | Preset code for this bank |
-| copy button | Copy |
-| copy confirmation | Copied. |
-| import field label | Paste a preset code |
-| import button, at rest | Apply |
-| import button, armed | Click again to replace {k} unsaved changes |
-| import, in flight | Applying… |
+| element                           | string                                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| save button                       | Save to bank {n}                                                                           |
+| reset button, at rest             | Reset bank {n}                                                                             |
+| reset button, armed               | Click again to reset bank {n} to factory                                                   |
+| reset, the escape hatch beside it | Copy this bank's preset code first                                                         |
+| wipe, heading                     | Wipe all memory                                                                            |
+| wipe, body                        | This resets all 12 banks to the factory sounds. It cannot be undone. Type WIPE to confirm. |
+| wipe button                       | Wipe all banks                                                                             |
+| export field label                | Preset code for this bank                                                                  |
+| copy button                       | Copy                                                                                       |
+| copy confirmation                 | Copied.                                                                                    |
+| import field label                | Paste a preset code                                                                        |
+| import button, at rest            | Apply                                                                                      |
+| import button, armed              | Click again to replace {k} unsaved changes                                                 |
+| import, in flight                 | Applying…                                                                                  |
 
 Validation messages, written under the import field:
 
-| cause | message |
-|---|---|
-| not base64 | That is not a preset code. |
-| wrong number of values | A preset code holds 255 values; this one holds {n}. |
-| a non-integer field | Value {i} is not a whole number. |
+| cause                   | message                                               |
+| ----------------------- | ----------------------------------------------------- |
+| not base64              | That is not a preset code.                            |
+| wrong number of values  | A preset code holds 255 values; this one holds {n}.   |
+| a non-integer field     | Value {i} is not a whole number.                      |
 | a value outside 0–16383 | Value {i} is outside the range the minichord accepts. |
 
 ### A.8 The named enumerations
@@ -1888,4 +1890,4 @@ The six chord shufflings (address 120), in wire order:
 `octave up, low fifth + low chromatics` · `octave up, low fifth + high chromatics` ·
 `two octaves up`
 
-*Decided in: [Decide the structure of SPEC.md and how the closed tickets flow into it](https://github.com/spippoli/minichord/issues/23) — which established that these strings were nowhere decided and belong here · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) for the enumerations, every label read out of `firmware/src/main.cpp` or out of a tooltip · [Decide the connection lifecycle and its UX](https://github.com/spippoli/minichord/issues/11) and [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) for where each message lands.*
+_Decided in: [Decide the structure of SPEC.md and how the closed tickets flow into it](https://github.com/spippoli/minichord/issues/23) — which established that these strings were nowhere decided and belong here · [Design the parameter control itself](https://github.com/spippoli/minichord/issues/10) for the enumerations, every label read out of `firmware/src/main.cpp` or out of a tooltip · [Decide the connection lifecycle and its UX](https://github.com/spippoli/minichord/issues/11) and [Decide the bank model and persistence UX](https://github.com/spippoli/minichord/issues/12) for where each message lands._

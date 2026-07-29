@@ -1,0 +1,7 @@
+# Build output and generated files: formatting them would only add churn.
+dist
+package-lock.json
+
+# Written by tools/extract-firmware-defaults.py in its own shape. Formatting it
+# would make every regeneration a 200-line diff and break `format:check`.
+src/dev/simulator/defaultBanks.ts

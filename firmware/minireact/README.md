@@ -1,32 +1,30 @@
-# React + TypeScript + Vite
+# minireact
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The minichord editor, reimplemented as a React + Vite single-page app. It
+replaces `firmware/minicontrol/` — the vanilla generated UI that is the
+functional reference, not code to extend.
 
-Currently, two official plugins are available:
+`SPEC.md` is the specification being implemented: the wire protocol, the four
+layers and the panel it all serves. Read it before writing anything here.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Commands
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev          # Vite dev server — the only supported workflow for now
+npm test             # Vitest, once
+npm run test:watch
+npm run lint         # oxlint
+npm run format       # prettier, default options, on demand
+npm run format:check
+npm run build        # tsc -b && vite build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The app talks to the device over the Web MIDI API with `sysex: true`, so it
+runs on Chromium only. With no device attached, `src/dev/simulator/` fakes one
+at the `MIDIAccess` seam — see its README.
+
+`tools/` holds the Python helpers: the device calibration harness and the
+extractor that regenerates the simulator's factory banks. They live there
+because the repository-root `.gitignore` silently swallows a `scripts/`
+directory at any depth (SPEC.md §2.6).
