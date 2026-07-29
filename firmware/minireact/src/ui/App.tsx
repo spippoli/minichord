@@ -1,3 +1,4 @@
+import { isGateStatus } from "../state";
 import { Gate } from "./Gate";
 import { useAppState } from "./runtimeContext";
 import { Strip } from "./Strip";
@@ -16,10 +17,9 @@ import { Strip } from "./Strip";
  */
 export function App() {
   const { connection } = useAppState();
-  const onDevice =
-    connection.status === "connected" || connection.status === "interrupted";
 
-  if (!onDevice) return <Gate />;
+  if (isGateStatus(connection.status))
+    return <Gate status={connection.status} />;
 
   return (
     <>

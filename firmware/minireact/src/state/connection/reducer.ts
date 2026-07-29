@@ -29,6 +29,19 @@ export type ConnectionStatus =
   /** The wire went away mid-session. Read-only, never back to the gate. */
   | "interrupted";
 
+/** The six states that are the gate: everything before the first dump. */
+export type GateStatus = Exclude<ConnectionStatus, "connected" | "interrupted">;
+
+/**
+ * Whether the app is still the gate.
+ *
+ * The split of SPEC.md 9.8 — six states before the first dump, two after — as
+ * the one predicate the top-level branch of SPEC.md 9.1 is made of.
+ */
+export function isGateStatus(status: ConnectionStatus): status is GateStatus {
+  return status !== "connected" && status !== "interrupted";
+}
+
 export type ConnectionState = {
   readonly status: ConnectionStatus;
   /** Every output port on the bus, for the manual picker of `no-device`. */
@@ -71,6 +84,17 @@ function unchanged(state: ConnectionState): Result {
   return { state, effects: [] };
 }
 
+/**
+ * Ask for the dump, and arm the retry in case it never comes.
+ *
+ * The one way into the store, and the same two effects every time: the
+ * automatic probe, the manual picker and every reconnection fill it by this
+ * path and no other (SPEC.md 5.9).
+ */
+function fillStore(): Effect[] {
+  return [{ type: "request-dump" }, { type: "schedule-dump-retry" }];
+}
+
 /** Bind a port and start the two round trips that fill the store. */
 function bindTo(state: ConnectionState, port: PortRef): Result {
   return {
@@ -83,11 +107,7 @@ function bindTo(state: ConnectionState, port: PortRef): Result {
       candidates: [],
       dumpRetriesLeft: DUMP_RETRIES,
     },
-    effects: [
-      { type: "bind", port },
-      { type: "request-dump" },
-      { type: "schedule-dump-retry" },
-    ],
+    effects: [{ type: "bind", port }, ...fillStore()],
   };
 }
 
@@ -155,11 +175,11 @@ export function connectionReducer(
 
     case "dump":
       // The only way to `connected`, from wherever we were.
-      if (state.status === "connected") {
-        return { state, effects: [{ type: "cancel-dump-retry" }] };
-      }
       return {
-        state: { ...state, status: "connected", dumpRetriesLeft: 0 },
+        state:
+          state.status === "connected"
+            ? state
+            : { ...state, status: "connected", dumpRetriesLeft: 0 },
         effects: [{ type: "cancel-dump-retry" }],
       };
 
@@ -167,6 +187,11 @@ export function connectionReducer(
       return dumpTimeout(state);
 
     case "transport-error":
+      // Both are answers to `requestAccess`, which is only ever asked before
+      // the first dump: past it, nothing re-opens the gate (SPEC.md 9.1).
+      if (state.status === "connected" || state.status === "interrupted") {
+        return unchanged(state);
+      }
       if (event.reason === "unsupported") {
         return { state: { ...state, status: "unsupported" }, effects: [] };
       }
@@ -248,7 +273,7 @@ function connectionChanged(state: ConnectionState, connected: boolean): Result {
   // as the store being true.
   return {
     state: { ...state, dumpRetriesLeft: DUMP_RETRIES },
-    effects: [{ type: "request-dump" }, { type: "schedule-dump-retry" }],
+    effects: fillStore(),
   };
 }
 
@@ -259,7 +284,7 @@ function dumpTimeout(state: ConnectionState): Result {
   if (state.dumpRetriesLeft > 0) {
     return {
       state: { ...state, dumpRetriesLeft: state.dumpRetriesLeft - 1 },
-      effects: [{ type: "request-dump" }, { type: "schedule-dump-retry" }],
+      effects: fillStore(),
     };
   }
   // Mid-session there is nothing to fall back to and the strip already says we

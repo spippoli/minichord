@@ -1,9 +1,6 @@
+import { BANK_ADDRESS, FIRMWARE_VERSION_ADDRESS, bankNumber } from "../domain";
 import { useAppState } from "./runtimeContext";
 import styles from "./Strip.module.css";
-
-/** Address 1 holds the bank as 0..11; a human counts from one. */
-const BANK_ADDRESS = 1;
-const FIRMWARE_VERSION_ADDRESS = 7;
 
 /**
  * After the first dump the connection is one line of the top bar.
@@ -25,7 +22,7 @@ export function Strip() {
   const line =
     connection.status === "interrupted"
       ? "Disconnected — waiting for the minichord to come back. Your edits are on screen but cannot be sent."
-      : `${connection.port?.name ?? ""} · firmware ${values?.[FIRMWARE_VERSION_ADDRESS] ?? 0} · bank ${(values?.[BANK_ADDRESS] ?? 0) + 1}`;
+      : `${connection.port?.name ?? ""} · firmware ${values?.[FIRMWARE_VERSION_ADDRESS] ?? 0} · bank ${bankNumber(values?.[BANK_ADDRESS] ?? 0)}`;
 
   return (
     <header className={styles.strip} data-status={connection.status}>

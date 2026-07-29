@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { ConnectionState, ConnectionStatus } from "../state";
+import type { ConnectionState, GateStatus } from "../state";
 import { useAppState, useRuntime } from "./runtimeContext";
 import styles from "./Gate.module.css";
 
@@ -17,8 +17,6 @@ import styles from "./Gate.module.css";
  * one part of the app an implementer would otherwise invent without noticing
  * they were deciding.
  */
-type GateStatus = Exclude<ConnectionStatus, "connected" | "interrupted">;
-
 const TEXT: Record<GateStatus, { heading: string; body: string }> = {
   unsupported: {
     heading: "This browser cannot reach the minichord",
@@ -46,11 +44,9 @@ const TEXT: Record<GateStatus, { heading: string; body: string }> = {
   },
 };
 
-export function Gate() {
+export function Gate({ status }: { status: GateStatus }) {
   const { connection } = useAppState();
-  // Safe by the branch in `App`: the two post-dump states are the editor, and
-  // the gate is never mounted in them.
-  const { heading, body } = TEXT[connection.status as GateStatus];
+  const { heading, body } = TEXT[status];
 
   return (
     <main className={styles.gate}>

@@ -224,6 +224,10 @@ export class Runtime {
         return;
 
       case "write":
+        // Straight onto the wire, for now. The write policy of SPEC.md 5.7 —
+        // one pending value per address, flushed once per animation frame,
+        // with a final flush on pointer-up — belongs to the first control that
+        // can produce a drag, and lands here without the reducer changing.
         this.transport.sendParameter(effect.address, effect.value);
     }
   }

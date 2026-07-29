@@ -6,6 +6,7 @@ import type { AppEvent } from "../events";
 import {
   connectionReducer,
   initialConnectionState,
+  isGateStatus,
   type ConnectionState,
 } from "./reducer";
 
@@ -338,5 +339,35 @@ describe("mid-session (SPEC.md 9.4, 9.8)", () => {
     );
     expect(state).toBe(before);
     expect(effects).toEqual([]);
+  });
+
+  it("never re-opens the gate, whatever the transport reports", () => {
+    for (const reason of ["access-denied", "unsupported"] as const) {
+      for (const from of [
+        connected(),
+        run([{ type: "transport-connection", connected: false }], connected())
+          .state,
+      ]) {
+        const { state } = run([{ type: "transport-error", reason }], from);
+        expect(isGateStatus(state.status)).toBe(false);
+      }
+    }
+  });
+});
+
+describe("the gate and the editor are exclusive (SPEC.md 9.1)", () => {
+  it("splits the eight states six and two, at the first dump", () => {
+    const gate = [
+      "unsupported",
+      "blocked",
+      "idle",
+      "searching",
+      "no-device",
+      "choose",
+    ] as const;
+    for (const status of gate) expect(isGateStatus(status)).toBe(true);
+    for (const status of ["connected", "interrupted"] as const) {
+      expect(isGateStatus(status)).toBe(false);
+    }
   });
 });
