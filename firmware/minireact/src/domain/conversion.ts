@@ -4,6 +4,12 @@
  * It lives in `domain/` because all of it is parameterised by fields that live
  * here — the data type, the curve and the declared range. The wire itself
  * carries nothing but integers.
+ *
+ * The two tags a parameter carries, `dataType` and `curve`, are each answered
+ * once by a table rather than re-tested at every call site: a scale says how a
+ * declared value travels and how it reads back, a curve law says how travel
+ * maps to the wire. Adding a third curve is then one entry, not a hunt for
+ * every `if`.
  */
 
 import type { Parameter } from "./parameters";
@@ -22,26 +28,78 @@ export const FLOAT_DECIMALS = 2;
  */
 const EXPONENTIAL_WIRE_MIN = 1;
 
+/** The wire bounds of one parameter. They only ever travel together. */
+interface WireRange {
+  low: number;
+  high: number;
+}
+
 function clamp(value: number, low: number, high: number): number {
   if (value < low) return low;
   if (value > high) return high;
   return value;
 }
 
-/** The declared bound as it travels: floats multiplied by 100, integers as is. */
-function toWire(parameter: Parameter, value: number): number {
-  return parameter.dataType === "float"
-    ? Math.round(value * FLOAT_MULTIPLIER)
-    : Math.round(value);
+/** How a declared value travels, and how a wire value reads back. */
+interface ValueScale {
+  toWire(value: number): number;
+  format(wire: number): string;
+}
+
+const SCALES: Record<Parameter["dataType"], ValueScale> = {
+  float: {
+    toWire: (value) => Math.round(value * FLOAT_MULTIPLIER),
+    format: (wire) => (wire / FLOAT_MULTIPLIER).toFixed(FLOAT_DECIMALS),
+  },
+  int: {
+    toWire: (value) => Math.round(value),
+    format: (wire) => String(Math.round(wire)),
+  },
+};
+
+/** How a position on the control's travel maps to the wire, and back. */
+interface CurveLaw {
+  /** The bottom of the range, given the declared minimum already on the wire. */
+  wireMin(declaredMin: number): number;
+  positionToWire(position: number, range: WireRange): number;
+  wireToPosition(wire: number, range: WireRange): number;
+}
+
+const CURVES: Record<Parameter["curve"], CurveLaw> = {
+  linear: {
+    wireMin: (declaredMin) => declaredMin,
+    positionToWire: (position, { low, high }) =>
+      clamp(Math.round(low + position * (high - low)), low, high),
+    wireToPosition: (wire, { low, high }) =>
+      high === low ? 0 : clamp((wire - low) / (high - low), 0, 1),
+  },
+  exponential: {
+    wireMin: () => EXPONENTIAL_WIRE_MIN,
+    // wire = round(max ** t). At t = 0 this is exactly 1, the wire minimum;
+    // on a 0..5000 parameter the first ln(1.5)/ln(5000) = 4.76% of the travel
+    // all sends 1, which is a logarithmic curve allotting travel by ratio and
+    // not dead travel. Do not "fix" it.
+    positionToWire: (position, { low, high }) =>
+      clamp(Math.round(high ** position), low, high),
+    wireToPosition: (wire, { high }) => {
+      if (wire <= EXPONENTIAL_WIRE_MIN) return 0;
+      if (high <= EXPONENTIAL_WIRE_MIN) return 0;
+      return clamp(Math.log(wire) / Math.log(high), 0, 1);
+    },
+  },
+};
+
+function wireRange(parameter: Parameter): WireRange {
+  return { low: wireMin(parameter), high: wireMax(parameter) };
 }
 
 export function wireMin(parameter: Parameter): number {
-  if (parameter.curve === "exponential") return EXPONENTIAL_WIRE_MIN;
-  return toWire(parameter, parameter.min);
+  const scale = SCALES[parameter.dataType];
+  return CURVES[parameter.curve].wireMin(scale.toWire(parameter.min));
 }
 
 export function wireMax(parameter: Parameter): number {
-  return toWire(parameter, parameter.max);
+  return SCALES[parameter.dataType].toWire(parameter.max);
 }
 
 /**
@@ -53,42 +111,20 @@ export function wireMax(parameter: Parameter): number {
  * continuous position recovers them and changes nothing on the wire.
  */
 export function positionToWire(parameter: Parameter, position: number): number {
-  const low = wireMin(parameter);
-  const high = wireMax(parameter);
-  const t = clamp(position, 0, 1);
-
-  if (parameter.curve === "exponential") {
-    // wire = round(max ** t). At t = 0 this is exactly 1, the wire minimum;
-    // on a 0..5000 parameter the first ln(1.5)/ln(5000) = 4.76% of the travel
-    // all sends 1, which is a logarithmic curve allotting travel by ratio and
-    // not dead travel. Do not "fix" it.
-    return clamp(Math.round(high ** t), low, high);
-  }
-
-  return clamp(Math.round(low + t * (high - low)), low, high);
+  return CURVES[parameter.curve].positionToWire(
+    clamp(position, 0, 1),
+    wireRange(parameter),
+  );
 }
 
 /** The inverse: the integer the device holds, to a position on the travel. */
 export function wireToPosition(parameter: Parameter, wire: number): number {
-  const low = wireMin(parameter);
-  const high = wireMax(parameter);
-
-  if (parameter.curve === "exponential") {
-    if (wire <= EXPONENTIAL_WIRE_MIN) return 0;
-    if (high <= EXPONENTIAL_WIRE_MIN) return 0;
-    return clamp(Math.log(wire) / Math.log(high), 0, 1);
-  }
-
-  if (high === low) return 0;
-  return clamp((wire - low) / (high - low), 0, 1);
+  return CURVES[parameter.curve].wireToPosition(wire, wireRange(parameter));
 }
 
 /** The wire value as the user reads it: floats divided by 100, to two decimals. */
 export function format(parameter: Parameter, wire: number): string {
-  if (parameter.dataType === "float") {
-    return (wire / FLOAT_MULTIPLIER).toFixed(FLOAT_DECIMALS);
-  }
-  return String(Math.round(wire));
+  return SCALES[parameter.dataType].format(wire);
 }
 
 /**
@@ -105,9 +141,6 @@ export function parse(parameter: Parameter, text: string): number | null {
   const value = Number(trimmed);
   if (Number.isNaN(value)) return null;
 
-  return clamp(
-    toWire(parameter, value),
-    wireMin(parameter),
-    wireMax(parameter),
-  );
+  const { low, high } = wireRange(parameter);
+  return clamp(SCALES[parameter.dataType].toWire(value), low, high);
 }
