@@ -11,13 +11,15 @@ thrown away once the real app exists.
 ```bash
 cd firmware/minireact
 npm install
-npm run dev     # boots the bench in src/dev/SimulatorConsole.tsx
+npm run dev     # the app shell — blank until ui/ is built
 npm test        # the simulator's own tests
 ```
 
-`npm run dev` currently mounts `SimulatorConsole`, a deliberately unstyled bench
-with buttons for every command, the preset buttons and unplugging. It is **not a
-user interface** — the information architecture
+`SimulatorConsole` is a deliberately unstyled bench with buttons for every
+command, the preset buttons and unplugging. It used to be what `npm run dev`
+mounted; now that implementation has started, `src/ui/App.tsx` is the root, and
+the bench is mounted there by hand when the simulator needs exercising. It is
+**not a user interface** — the information architecture
 ([#9](https://github.com/spippoli/minichord/issues/9)) and the parameter control
 ([#10](https://github.com/spippoli/minichord/issues/10)) are still open
 questions, and nothing in that file answers either.
@@ -31,15 +33,17 @@ transport runs unchanged — real 6-byte framing, real 7-bit split, real
 513-byte dump decoding, real port matching — so the two cannot drift apart.
 
 ```ts
-import { MinichordSimulator } from './dev/simulator'
+import { MinichordSimulator } from "./dev/simulator";
 
-const simulator = new MinichordSimulator()
-const transport = new MinichordTransport({ requestAccess: simulator.requestAccess })
+const simulator = new MinichordSimulator();
+const transport = new MinichordTransport({
+  requestAccess: simulator.requestAccess,
+});
 
 // drive the physical side the app cannot reach
-simulator.pressPresetButton(1) // emits an unsolicited dump
-simulator.disconnect()
-simulator.reconnect()
+simulator.pressPresetButton(1); // emits an unsolicited dump
+simulator.disconnect();
+simulator.reconnect();
 ```
 
 Options: `initialBank`, `firmwareVersion` (lower it to exercise
@@ -60,7 +64,7 @@ Three firmware behaviours it reproduces on purpose, because an app built
 against a politer device would be wrong:
 
 - **Dumps arrive unsolicited.** `load_config` ends with `control_command(0, 0)`,
-  so *every* bank load emits a dump nobody asked for — after a save, after a
+  so _every_ bank load emits a dump nobody asked for — after a save, after a
   reset, after a wipe, and after a press of the physical preset buttons.
 - **Saving to a bank also switches to it.** `save_config` assigns
   `current_bank_number = bank_number` before writing, then reloads.
@@ -89,16 +93,16 @@ ALSA rawmidi on Linux. Reproduce with:
 python3 tools/measure-device.py --json measurements.json
 ```
 
-| Quantity | Value | How |
-| --- | --- | --- |
-| Ingest rate | **0.581 ms/message** (~1720 msg/s) | slope of burst drain time over 25–800 messages |
-| Dump round-trip | median **0.81 ms**, p95 1.41 ms, max 1.91 ms | 500 consecutive `(0, 0)` commands, 0 timeouts |
-| Flash write + reload | **164 ms** | a save, timed to the unsolicited dump that follows — *not* reproduced by the harness, see below |
-| Message loss | **none detected**, bounded at ~2.5%/message | 0/195 across seven pacings; 0/117 probe slots in 254-message preset loads |
+| Quantity             | Value                                        | How                                                                                             |
+| -------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Ingest rate          | **0.581 ms/message** (~1720 msg/s)           | slope of burst drain time over 25–800 messages                                                  |
+| Dump round-trip      | median **0.81 ms**, p95 1.41 ms, max 1.91 ms | 500 consecutive `(0, 0)` commands, 0 timeouts                                                   |
+| Flash write + reload | **164 ms**                                   | a save, timed to the unsolicited dump that follows — _not_ reproduced by the harness, see below |
+| Message loss         | **none detected**, bounded at ~2.5%/message  | 0/195 across seven pacings; 0/117 probe slots in 254-message preset loads                       |
 
 The ingest figure is not a browser limit — it is the firmware. `loop()` calls
 `usbMIDI.read()` exactly once per iteration, so ingest is capped at one SysEx
-per main-loop iteration, and 0.581 ms *is* that iteration.
+per main-loop iteration, and 0.581 ms _is_ that iteration.
 
 ### What the numbers do not establish
 
@@ -113,7 +117,7 @@ Nothing was ever observed to drop, and the simulator drops nothing — but an ap
 that sends a preset load unpaced should still confirm with a dump rather than
 assume. Tightening this means giving every address a detectable sentinel.
 
-**The ingest slope is a floor.** T2 sends all its messages to one *unclaimed*
+**The ingest slope is a floor.** T2 sends all its messages to one _unclaimed_
 address, so `apply_audio_parameter` falls through the switch and does no work.
 A real preset load hits 254 live cases, several doing float math on audio
 objects. 0.581 ms/message is the cheapest possible message, and the ~148 ms
@@ -133,10 +137,10 @@ except that one.
   (command 1 after a `quickFormat`), the same erase-write-reload as a save, so
   the simulator charges them the same 164 ms.
 - **The physical preset buttons** — a 90-second listening window recorded no
-  press. They run `load_config` alone: a flash *read* with no write, so cheaper
+  press. They run `load_config` alone: a flash _read_ with no write, so cheaper
   than a save, but by an unknown margin. The simulator uses the 164 ms as an
   upper bound, erring towards making a prototype build the slow-path affordance.
 
-All three follow the same `load_config` path as the commands that *were*
+All three follow the same `load_config` path as the commands that _were_
 verified to emit an unsolicited dump, so that behaviour is low-risk; their
 timing is the untested part.
