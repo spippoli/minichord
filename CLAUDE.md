@@ -65,7 +65,7 @@ npm run format:check
 npm run build     # tsc -b && vite build
 ```
 
-The project is scaffolded (React + TypeScript, Vite 8) and `firmware/minireact/SPEC.md` is the specification being implemented. The layer skeleton of §2.1 exists — `src/transport/`, `src/domain/`, `src/state/`, `src/ui/`, with dependencies running one way `transport → domain → state → ui` — and `npm run dev` mounts `src/ui/App.tsx`, still blank. The throwaway protocol simulator in `src/dev/simulator/` (see its `README.md`) and its bench `src/dev/SimulatorConsole.tsx` are development fixtures, not application code.
+The project is scaffolded (React + TypeScript, Vite 8) and `firmware/minireact/SPEC.md` is the specification being implemented. The layer skeleton of §2.1 exists — `src/transport/`, `src/domain/`, `src/state/`, `src/ui/`, with dependencies running one way `transport → domain → state → ui` — and `npm run dev` mounts `src/ui/App.tsx`, which is the connection gate until the first dump lands and the strip plus an editor placeholder afterwards. The throwaway protocol simulator in `src/dev/simulator/` (see its `README.md`) and its bench `src/dev/SimulatorConsole.tsx` are development fixtures, not application code.
 
 `firmware/minireact/.gitignore` is local to the project and covers `node_modules/`, `dist/` and Python bytecode. Beware the root `.gitignore`: its virtualenv patterns (`[Bb]in`, `[Ss]cripts`, `[Ll]ocal`, `[Ll]ib64`) are unanchored, so a `scripts/` or `src/bin` directory anywhere in the SPA would be silently ignored — which is why the Python helpers live in `tools/`.
 

@@ -1,0 +1,459 @@
+import { describe, expect, it, vi } from "vitest";
+
+import {
+  BANK_ADDRESS,
+  FIRMWARE_VERSION_ADDRESS,
+  MinichordSimulator,
+  SIMULATED_FIRMWARE_VERSION,
+} from "../dev/simulator";
+import {
+  MinichordTransport,
+  PARAMETER_COUNT,
+  type PortRef,
+  type TransportEvent,
+  type Unsubscribe,
+} from "../transport";
+import { Runtime, type RuntimeTransport } from "./runtime";
+
+/**
+ * The whole connect path, headless.
+ *
+ * Nothing here mounts React, and nothing here stubs the transport out on the
+ * happy paths: the runtime drives the real `MinichordTransport` against the
+ * simulator's fake bus, so the probe, the two round trips and the reconnection
+ * are exercised through the same code the browser runs (SPEC.md 5.6, 2.5).
+ */
+
+function makeSimulator(portNames?: readonly [string, string]) {
+  return new MinichordSimulator({ realisticTiming: false, portNames });
+}
+
+type Harness = {
+  runtime: Runtime;
+  transport: MinichordTransport;
+  simulator: MinichordSimulator;
+  accessCalls: () => number;
+  setPermission: (state: PermissionState) => Promise<void>;
+};
+
+function harness(
+  options: {
+    simulator?: MinichordSimulator;
+    permission?: PermissionState;
+  } = {},
+): Harness {
+  const simulator = options.simulator ?? makeSimulator();
+  let permission: PermissionState = options.permission ?? "granted";
+  let accessCalls = 0;
+
+  const transport = new MinichordTransport({
+    requestAccess: () => {
+      accessCalls += 1;
+      return simulator.requestAccess({ sysex: true });
+    },
+    queryPermission: () => Promise.resolve(permission),
+  });
+
+  return {
+    // The windows are shortened, not removed: a mute candidate holds the
+    // parallel fan-out open for the whole window, and 1 s per test is a second
+    // spent proving nothing. The real numbers are asserted below, once.
+    runtime: new Runtime(transport, {
+      supported: true,
+      probeTimeoutMs: 25,
+      dumpRetryMs: 50,
+    }),
+    transport,
+    simulator,
+    accessCalls: () => accessCalls,
+    /** Flip the permission as site settings would, then let it be noticed. */
+    setPermission: async (state) => {
+      permission = state;
+      await transport.queryPermission();
+    },
+  };
+}
+
+/** Let promise chains and the simulator's microtask answers land. */
+async function until(predicate: () => boolean): Promise<void> {
+  for (let turn = 0; turn < 100; turn += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  expect.fail("the runtime never reached the expected state");
+}
+
+function statusOf(runtime: Runtime) {
+  return runtime.getState().connection.status;
+}
+
+async function connect(h: Harness): Promise<void> {
+  h.runtime.start();
+  await until(() => statusOf(h.runtime) === "connected");
+}
+
+describe("the ordinary path: one minichord, permission already granted", () => {
+  it("connects by itself and fills the store from the dump", async () => {
+    const h = harness();
+    await connect(h);
+
+    const { connection, parameters } = h.runtime.getState();
+    expect(connection.port?.name).toBe("minichord MIDI 1");
+    expect(parameters.values).toHaveLength(PARAMETER_COUNT);
+    expect(parameters.values?.[FIRMWARE_VERSION_ADDRESS]).toBe(
+      SIMULATED_FIRMWARE_VERSION,
+    );
+    expect(parameters.values?.[BANK_ADDRESS]).toBe(0);
+  });
+
+  it("holds nothing at all until that dump lands", async () => {
+    const h = harness();
+    expect(h.runtime.getState().parameters.values).toBeNull();
+    h.runtime.start();
+    // The probe's own dump is discarded by the transport, so it cannot fill the
+    // store: only the request that follows the bind does (SPEC.md 5.9).
+    await until(() => statusOf(h.runtime) === "searching");
+    await connect(h);
+    expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+
+  it("neutralises the five knob slots on every dump, without writing them back", async () => {
+    const h = harness();
+    await connect(h);
+
+    // Stand in for the physical knobs having moved: the device now reports
+    // something else in those five slots than the fiction the store holds.
+    const drift = new Map([
+      [2, 114],
+      [3, 121],
+      [4, 128],
+      [5, 135],
+      [6, 142],
+    ]);
+    for (const [address, value] of drift)
+      h.runtime.setParameter(address, value);
+    expect(h.runtime.getState().parameters.values?.[2]).toBe(114);
+
+    h.transport.requestDump();
+    await until(() => h.runtime.getState().parameters.values?.[2] === 50);
+
+    const values = h.runtime.getState().parameters.values;
+    expect([2, 3, 4, 5, 6].map((at) => values?.[at])).toEqual([
+      50, 50, 512, 512, 512,
+    ]);
+    // The device still reads what it read: the fiction is the store's alone,
+    // and unlike the legacy nothing is sent back to make them agree.
+    const device = h.simulator.device.snapshot();
+    for (const [address, value] of drift) expect(device[address]).toBe(value);
+  });
+
+  it("lets a later unsolicited dump overrule the store", async () => {
+    const h = harness();
+    await connect(h);
+    h.runtime.setParameter(40, 999);
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(999);
+
+    h.simulator.pressPresetButton(1);
+    await until(
+      () => h.runtime.getState().parameters.values?.[BANK_ADDRESS] === 1,
+    );
+    expect(h.runtime.getState().parameters.values?.[40]).not.toBe(999);
+  });
+
+  it("notifies its subscribers, and stops when they leave", async () => {
+    const h = harness();
+    const listener = vi.fn();
+    const unsubscribe = h.runtime.subscribe(listener);
+    await connect(h);
+    expect(listener).toHaveBeenCalled();
+
+    unsubscribe();
+    const before = listener.mock.calls.length;
+    h.runtime.setParameter(40, 12);
+    expect(listener.mock.calls.length).toBe(before);
+  });
+});
+
+describe("access (SPEC.md 9.2)", () => {
+  it("shows the Connect button on prompt and asks for nothing before the click", async () => {
+    const h = harness({ permission: "prompt" });
+    h.runtime.start();
+    await until(() => statusOf(h.runtime) === "idle");
+    expect(h.accessCalls()).toBe(0);
+
+    h.runtime.connect();
+    await until(() => statusOf(h.runtime) === "connected");
+    expect(h.accessCalls()).toBe(1);
+  });
+
+  it("never calls when denied, and recovers when the permission is flipped back", async () => {
+    const h = harness({ permission: "denied" });
+    h.runtime.start();
+    await until(() => statusOf(h.runtime) === "blocked");
+    expect(h.accessCalls()).toBe(0);
+
+    await h.setPermission("granted");
+    await until(() => statusOf(h.runtime) === "connected");
+    expect(h.accessCalls()).toBe(1);
+  });
+
+  it("is a hard stop where there is no Web MIDI API", () => {
+    const h = harness();
+    const runtime = new Runtime(h.transport, { supported: false });
+    runtime.start();
+    expect(statusOf(runtime)).toBe("unsupported");
+    expect(h.accessCalls()).toBe(0);
+  });
+});
+
+describe("discovery (SPEC.md 9.3)", () => {
+  it("lets the user choose when two minichords answer", async () => {
+    // Two buses, two devices: the second answers on its own control port.
+    const first = makeSimulator();
+    const second = makeSimulator(["minichord MIDI 3", "minichord MIDI 4"]);
+    const h = harness({ simulator: first });
+    mergeBuses(first, second);
+
+    h.runtime.start();
+    await until(() => statusOf(h.runtime) === "choose");
+    const candidates = h.runtime.getState().connection.candidates;
+    expect(candidates.map((port) => port.name)).toEqual([
+      "minichord MIDI 1",
+      "minichord MIDI 3",
+    ]);
+
+    h.runtime.pick(candidates[1]);
+    await until(() => statusOf(h.runtime) === "connected");
+    expect(h.runtime.getState().connection.port?.name).toBe("minichord MIDI 3");
+  });
+
+  it("offers every output port when no name matches, and binds a manual pick", async () => {
+    const h = harness({ simulator: makeSimulator(["Synth A", "Synth B"]) });
+    h.runtime.start();
+    await until(() => statusOf(h.runtime) === "no-device");
+    expect(h.runtime.getState().connection.ports.map((p) => p.name)).toEqual([
+      "Synth A",
+      "Synth B",
+    ]);
+
+    const control = h.runtime
+      .getState()
+      .connection.ports.find((port) => port.name === "Synth A")!;
+    h.runtime.pick(control);
+    await until(() => statusOf(h.runtime) === "connected");
+    expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+
+  it("says so when a manually picked port stays mute, and stays disconnected", async () => {
+    const h = harness({ simulator: makeSimulator(["Synth A", "Synth B"]) });
+    h.runtime.start();
+    await until(() => statusOf(h.runtime) === "no-device");
+
+    const mute = h.runtime
+      .getState()
+      .connection.ports.find((port) => port.name === "Synth B")!;
+    h.runtime.pick(mute);
+    expect(h.runtime.getState().connection.probing?.name).toBe("Synth B");
+
+    await until(() => h.runtime.getState().connection.mute !== null);
+    expect(statusOf(h.runtime)).toBe("no-device");
+    expect(h.runtime.getState().parameters.values).toBeNull();
+  });
+
+  it("re-discovers on its own when something is plugged in", async () => {
+    const h = harness({ simulator: makeSimulator(["Synth A", "Synth B"]) });
+    h.runtime.start();
+    await until(() => statusOf(h.runtime) === "no-device");
+
+    h.simulator.disconnect();
+    h.simulator.reconnect();
+    await until(() => statusOf(h.runtime) !== "no-device");
+  });
+});
+
+describe("mid-session (SPEC.md 9.4, 9.5)", () => {
+  it("goes read-only on a disconnect and refuses edits", async () => {
+    const h = harness();
+    await connect(h);
+    const before = h.runtime.getState().parameters.values?.[40];
+
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+
+    h.runtime.setParameter(40, 999);
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(before);
+  });
+
+  it("comes back by itself, through the same dump request as a first connect", async () => {
+    const h = harness();
+    await connect(h);
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+
+    h.simulator.reconnect();
+    await until(() => statusOf(h.runtime) === "connected");
+    expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+});
+
+describe("the probe window (SPEC.md 9.3)", () => {
+  it("asks every candidate at the same time, each with one second", async () => {
+    const noop: Unsubscribe = () => {};
+    const asked: Array<{ port: PortRef; timeoutMs: number }> = [];
+    const answer: Array<(answered: boolean) => void> = [];
+    const ports: PortRef[] = [
+      { id: "1", name: "minichord MIDI 1" },
+      { id: "2", name: "minichord MIDI 2" },
+      { id: "3", name: "microKORG" },
+    ];
+
+    const transport: RuntimeTransport = {
+      queryPermission: () => Promise.resolve("granted"),
+      onPermissionChange: () => noop,
+      requestAccess: () => Promise.resolve(),
+      listPorts: () => ports,
+      probe: (port, timeoutMs) => {
+        asked.push({ port, timeoutMs });
+        return new Promise<boolean>((resolve) => answer.push(resolve));
+      },
+      bind: () => {},
+      requestDump: () => true,
+      sendParameter: () => true,
+      subscribe: () => noop,
+      onPortsChanged: () => noop,
+    };
+
+    // No `probeTimeoutMs`: the default is the number the spec fixes.
+    const runtime = new Runtime(transport, { supported: true });
+    runtime.start();
+    await until(() => asked.length > 0);
+
+    // Both candidates in flight before either has answered, and the port that
+    // is nobody's minichord was never touched.
+    expect(asked.map((call) => call.port.name)).toEqual([
+      "minichord MIDI 1",
+      "minichord MIDI 2",
+    ]);
+    expect(asked.map((call) => call.timeoutMs)).toEqual([1000, 1000]);
+
+    // Cable 2 stays silent and excludes itself, whatever its name.
+    answer[0](true);
+    answer[1](false);
+    await until(() => runtime.getState().connection.port !== null);
+    expect(runtime.getState().connection.port?.id).toBe("1");
+    // Bound, and still not connected: only a dump moves it on.
+    expect(statusOf(runtime)).toBe("searching");
+  });
+});
+
+describe("the one-second retry (SPEC.md 5.9)", () => {
+  /**
+   * The one path the simulator cannot stage: a port that answers a probe and
+   * then swallows the dump request. A double, and only here.
+   */
+  function deafTransport() {
+    const port: PortRef = { id: "deaf", name: "minichord MIDI 1" };
+    let listener: ((event: TransportEvent) => void) | null = null;
+    const noop: Unsubscribe = () => {};
+    let requests = 0;
+
+    const transport: RuntimeTransport = {
+      queryPermission: () => Promise.resolve("granted"),
+      onPermissionChange: () => noop,
+      requestAccess: () => Promise.resolve(),
+      listPorts: () => [port],
+      probe: () => Promise.resolve(true),
+      bind: () => {},
+      requestDump: () => {
+        requests += 1;
+        return true;
+      },
+      sendParameter: () => true,
+      subscribe: (cb) => {
+        listener = cb;
+        return noop;
+      },
+      onPortsChanged: () => noop,
+    };
+
+    return {
+      transport,
+      requests: () => requests,
+      dump: () => {
+        listener?.({
+          type: "dump",
+          values: new Array<number>(PARAMETER_COUNT).fill(0),
+        });
+      },
+    };
+  }
+
+  it("asks a second time one second later, and stops there", async () => {
+    vi.useFakeTimers();
+    try {
+      const deaf = deafTransport();
+      const runtime = new Runtime(deaf.transport, {
+        supported: true,
+        probeTimeoutMs: 1000,
+        dumpRetryMs: 1000,
+      });
+      runtime.start();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(deaf.requests()).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(deaf.requests()).toBe(2);
+
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(deaf.requests()).toBe(2);
+      expect(statusOf(runtime)).toBe("no-device");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("disarms the retry when the first dump arrives", async () => {
+    vi.useFakeTimers();
+    try {
+      const deaf = deafTransport();
+      const runtime = new Runtime(deaf.transport, {
+        supported: true,
+        dumpRetryMs: 1000,
+      });
+      runtime.start();
+      await vi.advanceTimersByTimeAsync(0);
+      deaf.dump();
+
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(deaf.requests()).toBe(1);
+      expect(statusOf(runtime)).toBe("connected");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+/**
+ * Put a second simulated device on the first one's bus.
+ *
+ * Two `MIDIAccess` objects cannot both be handed to one transport, and a real
+ * machine with two minichords has one bus with four ports. Merging the maps is
+ * the smallest thing that reproduces that.
+ */
+function mergeBuses(into: MinichordSimulator, other: MinichordSimulator): void {
+  // Both simulators number their ports from one, and the transport keys its
+  // pairing on the port id, so the second device's ids are renamed first.
+  const rename = (port: MIDIPort) => {
+    (port as { id: string }).id = `b-${port.id}`;
+    return port.id;
+  };
+  for (const input of other.access.inputs.values()) {
+    (into.access.inputs as Map<string, MIDIInput>).set(rename(input), input);
+  }
+  for (const output of other.access.outputs.values()) {
+    (into.access.outputs as Map<string, MIDIOutput>).set(
+      rename(output),
+      output,
+    );
+  }
+}

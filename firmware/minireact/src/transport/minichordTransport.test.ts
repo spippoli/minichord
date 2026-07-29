@@ -385,6 +385,22 @@ describe("connection", () => {
     expect(events).toEqual([]);
   });
 
+  it("reports the bus changing even with nothing bound", async () => {
+    // The other half of the same event: `connection` is about the bound
+    // device, and with none bound the gate still has to notice a minichord
+    // being plugged in (SPEC.md 9.8).
+    const transport = await connected(simulator);
+    const changes: number[] = [];
+    const stop = transport.onPortsChanged(() => changes.push(1));
+    simulator.disconnect();
+    simulator.reconnect();
+    expect(changes).toHaveLength(2);
+
+    stop();
+    simulator.disconnect();
+    expect(changes).toHaveLength(2);
+  });
+
   it("cannot send while the wire is gone, and can again afterwards", async () => {
     const transport = await boundTransport(simulator);
     simulator.disconnect();

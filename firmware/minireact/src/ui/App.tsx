@@ -1,12 +1,32 @@
+import { Gate } from "./Gate";
+import { useAppState } from "./runtimeContext";
+import { Strip } from "./Strip";
+
 /**
- * The application shell: empty on purpose.
+ * The application shell: a gate, or an editor. Never both.
  *
- * `ui/` is the only layer that mounts (SPEC.md §2.1). Nothing is built into it
- * yet — the gate, the strip and the panel come with their own tickets — so
- * the dev server renders a blank, full-width page rather than the simulator
- * bench it used to boot. That bench still exists at `src/dev/SimulatorConsole`
- * and can be mounted here by hand when the simulator needs exercising.
+ * The branch is mutually exclusive at the top level on purpose (SPEC.md 9.1):
+ * before the first dump the app *is* the connection screen, and after it the
+ * editor is the app and the connection is one line of the top bar. The two
+ * states after the dump — `connected` and `interrupted` — are both the editor;
+ * a mid-session disconnect never re-opens the gate.
+ *
+ * The editor itself is a placeholder here. It arrives one control at a time,
+ * starting with the tracer bullet of the next ticket.
  */
 export function App() {
-  return null;
+  const { connection } = useAppState();
+  const onDevice =
+    connection.status === "connected" || connection.status === "interrupted";
+
+  if (!onDevice) return <Gate />;
+
+  return (
+    <>
+      <Strip />
+      <main>
+        <p>The editor goes here.</p>
+      </main>
+    </>
+  );
 }

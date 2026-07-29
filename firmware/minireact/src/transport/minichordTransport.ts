@@ -43,6 +43,7 @@ export class MinichordTransport {
   private readonly permissionListeners = new Set<
     (state: PermissionState) => void
   >();
+  private readonly portListeners = new Set<() => void>();
 
   private access: MIDIAccess | null = null;
   /** Output id -> the pair behind it. The pairing never crosses the seam. */
@@ -158,6 +159,23 @@ export class MinichordTransport {
     // A copy: a seam whose whole argument is opacity does not hand out the
     // array it keeps.
     return [...this.portRefs];
+  }
+
+  /**
+   * Watch the bus itself: any port appearing or going away.
+   *
+   * The `connection` event reports the *bound* device and nothing else, on
+   * purpose. This reports the bus, which is a different question and the one
+   * `no-device` waits on: with no port bound there is nothing to report a
+   * connection for, and plugging a minichord in must still end the gate without
+   * the user pressing anything (SPEC.md 9.8). It carries no payload — what
+   * changed is `listPorts()`, and deciding what it means is `state/`'s.
+   */
+  onPortsChanged(listener: () => void): Unsubscribe {
+    this.portListeners.add(listener);
+    return () => {
+      this.portListeners.delete(listener);
+    };
   }
 
   /**
@@ -379,6 +397,7 @@ export class MinichordTransport {
    */
   private onStateChange(event: MIDIConnectionEvent): void {
     this.refreshPorts();
+    for (const listener of [...this.portListeners]) listener();
     const port = event.port;
     if (!port || !this.bound) return;
     if (port.id !== this.bound.outputId && port.id !== this.bound.inputId) {
