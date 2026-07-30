@@ -1,9 +1,5 @@
-import {
-  FIRMWARE_VERSION_ADDRESS,
-  RESTING_LINE,
-  byAddress,
-  describeParameter,
-} from "../../domain";
+import { RESTING_LINE, byAddress, describeParameter } from "../../domain";
+import { firmwareVersion } from "../../state";
 import { useAppState } from "../runtimeContext";
 import styles from "./Readout.module.css";
 import { useReadoutTarget } from "./readoutChannel";
@@ -30,7 +26,7 @@ export function Readout() {
   const parameter = target ? byAddress.get(target.address) : undefined;
   const description = parameter
     ? describeParameter(parameter, {
-        firmwareVersion: parameters.values?.[FIRMWARE_VERSION_ADDRESS] ?? 0,
+        firmwareVersion: firmwareVersion(parameters),
       })
     : null;
 

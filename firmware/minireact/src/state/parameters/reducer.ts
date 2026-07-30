@@ -1,4 +1,4 @@
-import { BANK_ADDRESS } from "../../domain";
+import { BANK_ADDRESS, FIRMWARE_VERSION_ADDRESS } from "../../domain";
 import { PARAMETER_COUNT } from "../../transport";
 import type { ConnectionStatus } from "../connection/reducer";
 import type { Effect } from "../effects";
@@ -32,6 +32,19 @@ export const initialParametersState: ParametersState = {
   values: null,
   held: null,
 };
+
+/**
+ * The firmware the device reports, or 0 with no store behind it.
+ *
+ * One reading rather than three: the strip shows it, the readout explains a
+ * slot with it and every binding asks whether its parameter exists on this
+ * device. Zero is the honest answer before the first dump — every parameter is
+ * then newer than what is connected, which is what "no device, no state" means
+ * for availability (SPEC.md 5.2, 9.6).
+ */
+export function firmwareVersion(state: ParametersState): number {
+  return state.values?.[FIRMWARE_VERSION_ADDRESS] ?? 0;
+}
 
 /**
  * The five slots the store holds a fiction in (SPEC.md 5.4).
@@ -123,9 +136,11 @@ export function parametersReducer(
 
     case "pointer-up":
       // The end of a drag is both the end of the exception above and the one
-      // moment the write policy may not wait for a frame (SPEC.md 5.7).
+      // moment the write policy may not wait for a frame (SPEC.md 5.7). With
+      // nothing held there was no drag, and the slice stays inert.
+      if (state.held === null) return { state, effects: [] };
       return {
-        state: state.held === null ? state : { ...state, held: null },
+        state: { ...state, held: null },
         effects: [{ type: "flush-writes" }],
       };
 

@@ -44,7 +44,7 @@
  */
 .window {
   grid-area: window;
-  width: 4.5rem;
+  min-width: 4.5rem;
   padding: 0.1rem 0.25rem;
   border: 1px solid currentColor;
   font: inherit;

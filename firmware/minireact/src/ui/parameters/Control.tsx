@@ -217,7 +217,11 @@ export function Control({
             if (!unequipped) setDraft(format(parameter, value));
           }}
         >
-          {format(parameter, value)}
+          {/* An unequipped slot has no value to read back, so the window says
+              which firmware the parameter wants instead (SPEC.md 8.2). */}
+          {unequipped
+            ? `firmware ${parameter.introducedIn}`
+            : format(parameter, value)}
         </span>
       )}
 

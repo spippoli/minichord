@@ -22,7 +22,7 @@ export {
 } from "./parameters";
 
 export type { ControlKind } from "./kind";
-export { ENUMERATED_ADDRESSES, PICKER_ADDRESSES, kindOf } from "./kind";
+export { kindOf } from "./kind";
 
 export type { ParameterCondition, ParameterDescription } from "./description";
 export { RESTING_LINE, describeParameter } from "./description";

@@ -5,33 +5,33 @@ import { byAddress } from "./parameters";
 
 const CURRENT_FIRMWARE = 8;
 
-function parameter(address: number) {
+function parameterAt(address: number) {
   const found = byAddress.get(address);
-  if (!found) throw new Error(`no parameter at ${address}`);
+  if (!found) throw new Error(`no parameter at address ${address}`);
   return found;
 }
 
 /** `chord key signature`, the menu that arrived in firmware 6. */
-const NEWER = parameter(35);
+const NEWER = parameterAt(35);
 /** `reverb size`, an ordinary fader that has always been there. */
-const FADER = parameter(24);
+const FADER = parameterAt(24);
 
-function describe_(address: number, firmwareVersion = CURRENT_FIRMWARE) {
-  return describeParameter(parameter(address), { firmwareVersion });
+function descriptionAt(address: number, firmwareVersion = CURRENT_FIRMWARE) {
+  return describeParameter(parameterAt(address), { firmwareVersion });
 }
 
 describe("the where-line (SPEC.md A.4)", () => {
   it("is section, group, name, then the raw address", () => {
-    expect(describe_(24).where).toBe(
+    expect(descriptionAt(24).where).toBe(
       "Global / Effects / reverb size — address 24",
     );
   });
 
   it("names the section a tab names it", () => {
-    expect(describe_(40).where).toBe(
+    expect(descriptionAt(40).where).toBe(
       "Harp / General / harp shuffling — address 40",
     );
-    expect(describe_(120).where).toBe(
+    expect(descriptionAt(120).where).toBe(
       "Chord / General / chord shuffling — address 120",
     );
   });
@@ -39,20 +39,20 @@ describe("the where-line (SPEC.md A.4)", () => {
 
 describe("the readout's two lines (SPEC.md A.4)", () => {
   it("carries the parameter's own tooltip, untouched", () => {
-    expect(describe_(24).tooltip).toBe(FADER.tooltip);
+    expect(descriptionAt(24).tooltip).toBe(FADER.tooltip);
   });
 
   it("appends the note of the kind, derived and not passed in", () => {
-    expect(describe_(24).note).toBe(
+    expect(descriptionAt(24).note).toBe(
       "drag, use the arrow keys, or press Enter to type the value",
     );
-    expect(describe_(21).note).toBe("on / off");
-    expect(describe_(35).note).toBe("pick a value by name");
-    expect(describe_(30).note).toBe(
+    expect(descriptionAt(21).note).toBe("on / off");
+    expect(descriptionAt(35).note).toBe("pick a value by name");
+    expect(descriptionAt(30).note).toBe(
       "the arrow keys step the value; Enter types it",
     );
-    expect(describe_(10).note).toBe("points at another parameter");
-    expect(describe_(220).note).toBe("one step of the pattern");
+    expect(descriptionAt(10).note).toBe("points at another parameter");
+    expect(descriptionAt(220).note).toBe("one step of the pattern");
   });
 
   it("replaces the note on an unequipped slot, and says which firmware", () => {
@@ -78,7 +78,7 @@ describe("the readout's two lines (SPEC.md A.4)", () => {
 
 describe("the one sentence a screen reader hears (SPEC.md A.5)", () => {
   it("is the tooltip alone when there is nothing else to say", () => {
-    expect(describe_(24).sentence).toBe(`${FADER.tooltip}.`);
+    expect(descriptionAt(24).sentence).toBe(`${FADER.tooltip}.`);
   });
 
   it("puts the unequipped explanation in front of the tooltip", () => {
@@ -101,7 +101,7 @@ describe("the one sentence a screen reader hears (SPEC.md A.5)", () => {
   });
 
   it("carries neither the section nor the group: the plate announces them", () => {
-    const sentence = describe_(24).sentence;
+    const sentence = descriptionAt(24).sentence;
     expect(sentence).not.toContain("Global");
     expect(sentence).not.toContain("Effects");
   });

@@ -1,4 +1,5 @@
-import { BANK_ADDRESS, FIRMWARE_VERSION_ADDRESS, bankNumber } from "../domain";
+import { BANK_ADDRESS, bankNumber } from "../domain";
+import { firmwareVersion } from "../state";
 import { useAppState } from "./runtimeContext";
 import styles from "./Strip.module.css";
 
@@ -22,7 +23,7 @@ export function Strip() {
   const line =
     connection.status === "interrupted"
       ? "Disconnected — waiting for the minichord to come back. Your edits are on screen but cannot be sent."
-      : `${connection.port?.name ?? ""} · firmware ${values?.[FIRMWARE_VERSION_ADDRESS] ?? 0} · bank ${bankNumber(values?.[BANK_ADDRESS] ?? 0)}`;
+      : `${connection.port?.name ?? ""} · firmware ${firmwareVersion(parameters)} · bank ${bankNumber(values?.[BANK_ADDRESS] ?? 0)}`;
 
   return (
     <header className={styles.strip} data-status={connection.status}>

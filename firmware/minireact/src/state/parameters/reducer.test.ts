@@ -6,6 +6,7 @@ import type { ConnectionStatus } from "../connection/reducer";
 import type { AppEvent } from "../events";
 import {
   NEUTRALISED,
+  firmwareVersion,
   initialParametersState,
   parametersReducer,
   type ParametersState,
@@ -97,6 +98,12 @@ describe("the neutralisation (SPEC.md 5.4)", () => {
 
   it("leaves the firmware version alone", () => {
     expect(dumped().values?.[7]).toBe(7);
+    expect(firmwareVersion(dumped())).toBe(7);
+  });
+
+  it("reads the firmware as 0 with no store behind it", () => {
+    // Before the first dump every parameter is newer than what is connected.
+    expect(firmwareVersion(initialParametersState)).toBe(0);
   });
 });
 
@@ -173,6 +180,17 @@ describe("the address under an active pointer (SPEC.md 5.3)", () => {
     // The final position of a drag is never the one coalescing threw away.
     const { effects } = apply({ type: "pointer-up" }, "connected", holding(40));
     expect(effects).toEqual([{ type: "flush-writes" }]);
+  });
+
+  it("asks for nothing when no pointer was down", () => {
+    const before = dumped();
+    const { state, effects } = apply(
+      { type: "pointer-up" },
+      "connected",
+      before,
+    );
+    expect(state).toBe(before);
+    expect(effects).toEqual([]);
   });
 
   it("loses the exception too when the dump carries another bank", () => {

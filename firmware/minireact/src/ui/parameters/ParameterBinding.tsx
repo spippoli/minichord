@@ -1,9 +1,5 @@
-import {
-  FIRMWARE_VERSION_ADDRESS,
-  describeParameter,
-  isAvailable,
-  type Parameter,
-} from "../../domain";
+import { describeParameter, isAvailable, type Parameter } from "../../domain";
+import { firmwareVersion } from "../../state";
 import { useAppState, useRuntime } from "../runtimeContext";
 import { Control } from "./Control";
 
@@ -33,14 +29,14 @@ export function ParameterBinding({ parameter }: { parameter: Parameter }) {
   // binding only ever renders with a store behind it (SPEC.md 5.2).
   if (!values) return null;
 
-  const firmwareVersion = values[FIRMWARE_VERSION_ADDRESS];
+  const version = firmwareVersion(parameters);
 
   return (
     <Control
       parameter={parameter}
       value={values[parameter.address]}
-      unequipped={!isAvailable(parameter, firmwareVersion)}
-      description={describeParameter(parameter, { firmwareVersion })}
+      unequipped={!isAvailable(parameter, version)}
+      description={describeParameter(parameter, { firmwareVersion: version })}
       // Optimism, and its subordination to the connection, are the reducer's:
       // an edit with no wire is refused there, not drawn away here.
       onChange={(value) => runtime.setParameter(parameter.address, value)}

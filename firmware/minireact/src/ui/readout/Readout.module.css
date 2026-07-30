@@ -26,6 +26,12 @@
   opacity: 0.7;
 }
 
+/* The tooltip and the note read as one paragraph: the note is appended to the
+ * tooltip, not stacked under it (SPEC.md A.4). */
+.what {
+  max-width: 70ch;
+}
+
 .note {
   opacity: 0.7;
 }

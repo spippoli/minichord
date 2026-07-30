@@ -24,11 +24,11 @@ export function ReadoutProvider({ children }: { children: ReactNode }) {
   const channel = useMemo(
     () => ({
       show(source: ReadoutSource, target: ReadoutTarget) {
-        setSources((previous) =>
-          previous[source]?.address === target.address
-            ? previous
-            : { ...previous, [source]: target },
-        );
+        // No comparison against what is already there: `pointerenter` and
+        // `focus` each fire once per control, so there is nothing to dedupe,
+        // and a comparison on the address alone would drop a move between two
+        // cells of one sequencer column (SPEC.md 12.4).
+        setSources((previous) => ({ ...previous, [source]: target }));
       },
       clear(source: ReadoutSource) {
         setSources((previous) =>
