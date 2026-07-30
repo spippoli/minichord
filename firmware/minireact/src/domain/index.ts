@@ -6,6 +6,12 @@
  * imports nothing from `transport/`.
  */
 
+export {
+  BANK_ADDRESS,
+  FIRMWARE_VERSION_ADDRESS,
+  bankNumber,
+} from "./addresses";
+
 export type { Parameter, Section } from "./parameters";
 export {
   HIDDEN_GROUP,

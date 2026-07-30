@@ -1,0 +1,96 @@
+/*
+ * The gate is a whole screen and the only thing on it, so it centres one card.
+ * Deliberately plain: the panel's visual language — the two mouldings and the
+ * bank hue — is a later ticket, and nothing here should have to be undone when
+ * it lands.
+ */
+
+.gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: 2rem 1rem;
+}
+
+.card {
+  max-width: 34rem;
+}
+
+.heading {
+  margin: 0 0 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.body {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.note {
+  margin: 1rem 0 0;
+  opacity: 0.85;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.label {
+  flex-basis: 100%;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.ports {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.action,
+.select {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: inherit;
+}
+
+.action {
+  cursor: pointer;
+}
+
+.action:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.action:focus-visible,
+.select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* The lone Connect button of `idle`, which has no group to sit in. */
+.card > .action {
+  margin-top: 1.5rem;
+}

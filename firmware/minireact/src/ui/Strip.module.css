@@ -1,0 +1,22 @@
+/*
+ * One line, at the top, always the same height: the strip is a place where a
+ * sentence may appear, not a banner that pushes the panel down when it does.
+ */
+
+.strip {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid currentColor;
+}
+
+.line {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Disconnected is a state to notice, not an alarm to dismiss. */
+.strip[data-status="interrupted"] .line {
+  opacity: 0.75;
+}
