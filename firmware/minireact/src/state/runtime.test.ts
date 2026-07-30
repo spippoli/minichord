@@ -34,6 +34,8 @@ type Harness = {
   simulator: MinichordSimulator;
   accessCalls: () => number;
   setPermission: (state: PermissionState) => Promise<void>;
+  /** Run the frame the write policy is waiting for, if it asked for one. */
+  frame: () => void;
 };
 
 function harness(
@@ -45,6 +47,9 @@ function harness(
   const simulator = options.simulator ?? makeSimulator();
   let permission: PermissionState = options.permission ?? "granted";
   let accessCalls = 0;
+  // The animation frame, held by hand: there is no rAF in the test
+  // environment, and the point of the policy is *when* the wire is touched.
+  let pendingFrame: (() => void) | null = null;
 
   const transport = new MinichordTransport({
     requestAccess: () => {
@@ -62,10 +67,21 @@ function harness(
       supported: true,
       probeTimeoutMs: 25,
       dumpRetryMs: 50,
+      scheduleFlush: (flush) => {
+        pendingFrame = flush;
+        return () => {
+          pendingFrame = null;
+        };
+      },
     }),
     transport,
     simulator,
     accessCalls: () => accessCalls,
+    frame: () => {
+      const flush = pendingFrame;
+      pendingFrame = null;
+      flush?.();
+    },
     /** Flip the permission as site settings would, then let it be noticed. */
     setPermission: async (state) => {
       permission = state;
@@ -133,6 +149,7 @@ describe("the ordinary path: one minichord, permission already granted", () => {
     for (const [address, value] of drift)
       h.runtime.setParameter(address, value);
     expect(h.runtime.getState().parameters.values?.[2]).toBe(114);
+    h.frame();
 
     h.transport.requestDump();
     await until(() => h.runtime.getState().parameters.values?.[2] === 50);
@@ -457,3 +474,98 @@ function mergeBuses(into: MinichordSimulator, other: MinichordSimulator): void {
     );
   }
 }
+
+describe("the write policy (SPEC.md 5.7)", () => {
+  /** Every parameter message the bound port actually saw, in order. */
+  function wireLog(h: Harness) {
+    const sent: Array<{ address: number; value: number }> = [];
+    const send = h.transport.sendParameter.bind(h.transport);
+    vi.spyOn(h.transport, "sendParameter").mockImplementation(
+      (address, value) => {
+        sent.push({ address, value });
+        return send(address, value);
+      },
+    );
+    return sent;
+  }
+
+  it("coalesces per address: one drag is one message a frame", async () => {
+    const h = harness();
+    await connect(h);
+    const sent = wireLog(h);
+
+    h.runtime.pointerDown(40);
+    for (const value of [10, 11, 12, 13, 14]) h.runtime.setParameter(40, value);
+    // Optimism is immediate; the wire is not.
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(14);
+    expect(sent).toEqual([]);
+
+    h.frame();
+    expect(sent).toEqual([{ address: 40, value: 14 }]);
+  });
+
+  it("keeps one pending value per address, not one queue for all of them", async () => {
+    const h = harness();
+    await connect(h);
+    const sent = wireLog(h);
+
+    h.runtime.setParameter(40, 1);
+    h.runtime.setParameter(41, 2);
+    h.runtime.setParameter(40, 3);
+    h.frame();
+
+    expect(sent).toEqual([
+      { address: 40, value: 3 },
+      { address: 41, value: 2 },
+    ]);
+  });
+
+  it("always flushes the last value of a drag on pointer-up", async () => {
+    const h = harness();
+    await connect(h);
+    const sent = wireLog(h);
+
+    h.runtime.pointerDown(40);
+    h.runtime.setParameter(40, 99);
+    h.runtime.pointerUp();
+
+    // No frame was run: the end of a drag does not wait for one, or the last
+    // position of the drag is the one that got coalesced away.
+    expect(sent).toEqual([{ address: 40, value: 99 }]);
+    expect(h.simulator.device.snapshot()[40]).toBe(99);
+
+    // And the frame that was pending has nothing left to send.
+    h.frame();
+    expect(sent).toHaveLength(1);
+  });
+
+  it("asks for one frame at a time, however many values arrive", async () => {
+    const h = harness();
+    await connect(h);
+    const sent = wireLog(h);
+
+    h.runtime.setParameter(40, 1);
+    h.frame();
+    h.runtime.setParameter(40, 2);
+    h.frame();
+
+    expect(sent).toEqual([
+      { address: 40, value: 1 },
+      { address: 40, value: 2 },
+    ]);
+  });
+
+  it("sends nothing the reducer refused", async () => {
+    const h = harness();
+    await connect(h);
+    const sent = wireLog(h);
+
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+    h.runtime.setParameter(40, 5);
+    h.runtime.pointerUp();
+    h.frame();
+
+    expect(sent).toEqual([]);
+  });
+});

@@ -25,4 +25,12 @@ export type Effect =
   /** Disarm it: a dump arrived, or we gave up. */
   | { type: "cancel-dump-retry" }
   /** Put one raw value at one address on the wire. */
-  | { type: "write"; address: number; value: number };
+  | { type: "write"; address: number; value: number }
+  /**
+   * Send whatever is still pending now, without waiting for the frame.
+   *
+   * The write policy coalesces per address and flushes once per animation
+   * frame (SPEC.md 5.7); the end of a drag is the moment where waiting would
+   * mean the last position of the drag is the one that got coalesced away.
+   */
+  | { type: "flush-writes" };

@@ -1,0 +1,20 @@
+/*
+ * The panel is a dense workbench (SPEC.md 7.1): controls are laid out to be
+ * compared side by side, not stacked in one column.
+ *
+ * The narrow floor is declared rather than degraded into: 760 px still holds
+ * two columns, and below `min-width` the panel scrolls sideways (SPEC.md 7.5).
+ * The plates that will carry this flow arrive with the information
+ * architecture.
+ */
+
+.panel {
+  min-width: 744px;
+  padding: 1rem;
+}
+
+.flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.25rem 1.5rem;
+}

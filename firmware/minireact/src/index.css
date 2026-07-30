@@ -22,6 +22,28 @@ body {
   margin: 0;
 }
 
+/*
+ * One focus ring, defined once, for everything focusable (SPEC.md 12.7).
+ *
+ * It replaces three defects that were all live at the time of the decision: a
+ * ring that existed on two kinds of six, with the rest falling back to
+ * Chromium's system blue in the middle of an 80s panel; 1 px, which is thin for
+ * ten identical controls stacked in a plate; and `:focus` mixed with
+ * `:focus-visible`, so windows lit up under the mouse.
+ *
+ * The colour is the LCD's own ink in each moulding. The moulding itself has not
+ * been designed yet (SPEC.md 7.4) — this is the ink under the name the token
+ * set will fill, and the ring is drawn from the token either way.
+ */
+:root {
+  --lcd-ink: light-dark(#1b2a20, #b6f0c4);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--lcd-ink);
+  outline-offset: 2px;
+}
+
 #root {
   min-height: 100svh;
 }

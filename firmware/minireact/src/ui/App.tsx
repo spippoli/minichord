@@ -1,5 +1,8 @@
 import { isGateStatus } from "../state";
 import { Gate } from "./Gate";
+import { Panel } from "./panel/Panel";
+import { Readout } from "./readout/Readout";
+import { ReadoutProvider } from "./readout/ReadoutProvider";
 import { useAppState } from "./runtimeContext";
 import { Strip } from "./Strip";
 
@@ -12,8 +15,11 @@ import { Strip } from "./Strip";
  * states after the dump — `connected` and `interrupted` — are both the editor;
  * a mid-session disconnect never re-opens the gate.
  *
- * The editor itself is a placeholder here. It arrives one control at a time,
- * starting with the tracer bullet of the next ticket.
+ * Two single-instance channels stand here side by side, on different clocks and
+ * deliberately unmerged (SPEC.md 6.1, invariant 7): the **strip** says what
+ * happened to the device and is the app's only voice, while the **readout**
+ * explains what is under the hand right now and is mute for a screen reader.
+ * There is **exactly one** readout in the tree, and this is it.
  */
 export function App() {
   const { connection } = useAppState();
@@ -22,11 +28,10 @@ export function App() {
     return <Gate status={connection.status} />;
 
   return (
-    <>
+    <ReadoutProvider>
       <Strip />
-      <main>
-        <p>The editor goes here.</p>
-      </main>
-    </>
+      <Readout />
+      <Panel />
+    </ReadoutProvider>
   );
 }

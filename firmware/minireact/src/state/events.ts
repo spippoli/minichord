@@ -42,4 +42,8 @@ export type AppEvent =
   /** An operating condition the transport reports (SPEC.md 3.4). */
   | { type: "transport-error"; reason: TransportErrorReason }
   /** A control was moved: one address, one raw wire value. */
-  | { type: "edit"; address: number; value: number };
+  | { type: "edit"; address: number; value: number }
+  /** A pointer went down on a control: that address is now held (SPEC.md 5.3). */
+  | { type: "pointer-down"; address: number }
+  /** The pointer came up. There is only ever one, so it carries no address. */
+  | { type: "pointer-up" };
