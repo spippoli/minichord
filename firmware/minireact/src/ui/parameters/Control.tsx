@@ -21,6 +21,7 @@ import {
 import { parameterAnchor } from "../panel/focusParameter";
 import { useReadoutChannel } from "../readout/readoutChannel";
 import styles from "./Control.module.css";
+import { ControlDescription } from "./ControlDescription";
 import {
   Fader,
   Menu,
@@ -282,13 +283,8 @@ export function Control({
         </span>
       )}
 
-      {/* The description the reader hears, from the single producer. It is
-          itself `aria-hidden`: Chromium computes the description from hidden
-          text, and without this the sentence is *also* read as loose text in
-          the plate (SPEC.md 12.5). */}
-      <span id={descriptionId} className={styles.offscreen} aria-hidden="true">
-        {description.sentence}
-      </span>
+      {/* The description the reader hears, from the single producer. */}
+      <ControlDescription id={descriptionId} sentence={description.sentence} />
     </div>
   );
 }

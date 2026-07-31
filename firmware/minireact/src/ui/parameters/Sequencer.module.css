@@ -1,0 +1,89 @@
+/*
+ * The step sequencer: sixteen steps across, seven rows down, on a full-width
+ * plate (SPEC.md 8.3).
+ *
+ * One CSS grid holds the whole thing, and the row wrappers are `display:
+ * contents` so that the `grid → row → rowheader/gridcell → checkbox` tree
+ * survives the layout — verified with a real screen reader (SPEC.md 12.4).
+ *
+ * The moulding has not been designed yet (SPEC.md 7.4): what is here is the
+ * geometry, drawn in `currentColor` like the rest of the panel so far.
+ */
+
+.grid {
+  display: grid;
+  grid-template-columns: auto repeat(16, 1fr);
+  gap: 2px;
+  padding: 0.5rem;
+}
+
+/* The row is a wrapper for the reader, and nothing at all for the layout. */
+.row {
+  display: contents;
+}
+
+/* The header of the note column: a place, with nothing to say. */
+.corner {
+  grid-column: 1;
+}
+
+.stepHead {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  opacity: 0.75;
+}
+
+.noteHead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding-inline-end: 0.5rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.voice {
+  opacity: 0.6;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A cell is a bit: it is on or it is off, and there is nothing in between. */
+.bit {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid currentColor;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.bit[aria-checked="true"] {
+  background: currentColor;
+}
+
+/*
+ * Steps past `cycle length` are marked and stay editable: the firmware never
+ * reaches them, so drawing all sixteen identically is a quiet lie — but
+ * shortening the cycle must not destroy what lies past the end (SPEC.md 8.3).
+ */
+.stepHead[data-out-of-cycle],
+.bit[data-out-of-cycle] {
+  opacity: 0.4;
+}
+
+.bit[data-out-of-cycle] {
+  border-style: dashed;
+}
+
+/* An unequipped slot keeps its place; the cell is dead, not the grid dimmed. */
+.bit[aria-disabled="true"] {
+  cursor: not-allowed;
+  filter: grayscale(1);
+}

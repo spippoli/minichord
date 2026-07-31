@@ -16,10 +16,14 @@
 
 import { kindOf, type ControlKind } from "./kind";
 import type { Parameter, Section } from "./parameters";
+import type { SequencerCell } from "./rhythm";
 
 /** What the readout says when nothing is hovered and nothing is focused. */
 export const RESTING_LINE =
   "Point at a control, or tab to one, and it explains itself here.";
+
+/** What the panel calls a step the firmware never reaches (SPEC.md A.6). */
+export const OUT_OF_CYCLE = "out of cycle";
 
 /** The little of the store a description depends on. */
 export interface ParameterCondition {
@@ -29,6 +33,8 @@ export interface ParameterCondition {
   changedFromStoredBank?: boolean;
   /** The blue LED: this value differs from the factory default. */
   differsFromDefault?: boolean;
+  /** The cell under the hand, when the parameter is a sequencer column. */
+  cell?: SequencerCell;
 }
 
 export interface ParameterDescription {
@@ -73,20 +79,38 @@ function sentence(fragments: readonly string[]): string {
     .join(" ");
 }
 
+/**
+ * Where a cell is, in the words of SPEC.md A.4 and A.5: the step and the note,
+ * plus _out of cycle_ when the firmware never reaches that step.
+ *
+ * One fragment for both consumers, because there is one producer: the readout
+ * appends it to the where-line and the reader hears it first in the sentence.
+ */
+function cellFragment(cell: SequencerCell): string {
+  const where = `step ${cell.step}, note ${cell.note}`;
+  return cell.outOfCycle ? `${where}, ${OUT_OF_CYCLE}` : where;
+}
+
 export function describeParameter(
   parameter: Parameter,
   condition: ParameterCondition,
 ): ParameterDescription {
   const unequipped = parameter.introducedIn > condition.firmwareVersion;
+  const cell = condition.cell;
 
   return {
-    where: `${SECTION_NAME[parameter.section]} / ${parameter.group} / ${parameter.name} — address ${parameter.address}`,
+    // The address stays on a cell's where-line: the column *is* a parameter,
+    // and the step and note are what the address alone cannot say.
+    where: `${SECTION_NAME[parameter.section]} / ${parameter.group} / ${parameter.name} — address ${parameter.address}${cell ? ` — ${cellFragment(cell)}` : ""}`,
     tooltip: parameter.tooltip,
     unequipped,
     note: unequipped
       ? `Not on this device. This parameter arrived in firmware ${parameter.introducedIn}; the minichord you are connected to is older, so the slot is empty rather than editable.`
       : KIND_NOTE[kindOf(parameter)],
     sentence: sentence([
+      // First, per SPEC.md A.5: the section and the group are deliberately
+      // absent, the plate's `role="group"` having announced them on entry.
+      ...(cell ? [cellFragment(cell)] : []),
       ...(unequipped
         ? [
             `Not on this device: this parameter arrived in firmware ${parameter.introducedIn} and the connected minichord is older`,

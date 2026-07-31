@@ -1,8 +1,9 @@
 import { useId } from "react";
 
-import type { Parameter } from "../../domain";
+import { isRhythmAddress, type Parameter } from "../../domain";
 import { isEdited } from "../../state";
 import { ParameterBinding } from "../parameters/ParameterBinding";
+import { SequencerBinding } from "../parameters/SequencerBinding";
 import { useAppState } from "../runtimeContext";
 import styles from "./Panel.module.css";
 import type { Plate as PlateModel } from "./plates";
@@ -20,6 +21,11 @@ import type { Plate as PlateModel } from "./plates";
  * folding hides noise, never state. The count reads the store, which a plate
  * may do — invariant 1 is about components that *draw a parameter*, and the
  * binding below is still the only one of those.
+ *
+ * One plate is not a column of controls: the chord section's Rythm group holds
+ * the sixteen rhythm masks, and those are **one grid, not sixteen controls**
+ * (SPEC.md 8.3). The plate that holds them spans the whole flow, since a
+ * sixteen-step grid in a 20rem column is a grid nobody can read.
  */
 export function Plate({
   plate,
@@ -44,8 +50,24 @@ export function Plate({
     isEdited(store, parameter.address),
   ).length;
 
+  /**
+   * The grid is one object, so a search that finds any of its sixteen columns
+   * draws all sixteen: a grid with four of its steps missing is not a shorter
+   * grid, it is a broken one.
+   */
+  const sequencer = matching.some((parameter) =>
+    isRhythmAddress(parameter.address),
+  );
+  const controls = matching.filter(
+    (parameter) => !isRhythmAddress(parameter.address),
+  );
+
   return (
-    <section className={styles.plate} role="group" aria-labelledby={headingId}>
+    <section
+      className={sequencer ? styles.plateWide : styles.plate}
+      role="group"
+      aria-labelledby={headingId}
+    >
       <h2 className={styles.plateHeading}>
         <button
           type="button"
@@ -66,10 +88,15 @@ export function Plate({
       </h2>
 
       {!folded && (
-        <div className={styles.plateBody}>
-          {matching.map((parameter) => (
+        <div className={sequencer ? styles.plateBodyWide : styles.plateBody}>
+          {controls.map((parameter) => (
             <ParameterBinding key={parameter.address} parameter={parameter} />
           ))}
+          {sequencer && (
+            <div className={styles.sequencerSlot}>
+              <SequencerBinding />
+            </div>
+          )}
         </div>
       )}
     </section>

@@ -27,6 +27,28 @@ describe("the where-line (SPEC.md A.4)", () => {
     );
   });
 
+  it("says the step and the note of a sequencer cell (SPEC.md A.4)", () => {
+    // A column *is* a parameter and a cell is a bit, so the address alone does
+    // not say what is under the hand (SPEC.md 6.1, invariant 3).
+    expect(
+      describeParameter(parameterAt(223), {
+        firmwareVersion: CURRENT_FIRMWARE,
+        cell: { step: 4, note: 2, outOfCycle: false },
+      }).where,
+    ).toBe("Chord / Rythm / rythm pattern — address 223 — step 4, note 2");
+  });
+
+  it("marks a step the firmware never reaches (SPEC.md A.6)", () => {
+    expect(
+      describeParameter(parameterAt(235), {
+        firmwareVersion: CURRENT_FIRMWARE,
+        cell: { step: 16, note: 7, outOfCycle: true },
+      }).where,
+    ).toBe(
+      "Chord / Rythm / rythm pattern — address 235 — step 16, note 7, out of cycle",
+    );
+  });
+
   it("names the section a tab names it", () => {
     expect(descriptionAt(40).where).toBe(
       "Harp / General / harp shuffling — address 40",
@@ -104,6 +126,15 @@ describe("the one sentence a screen reader hears (SPEC.md A.5)", () => {
     const sentence = descriptionAt(24).sentence;
     expect(sentence).not.toContain("Global");
     expect(sentence).not.toContain("Effects");
+  });
+
+  it("opens with the cell, when the control is one (SPEC.md A.5)", () => {
+    expect(
+      describeParameter(parameterAt(223), {
+        firmwareVersion: CURRENT_FIRMWARE,
+        cell: { step: 4, note: 2, outOfCycle: false },
+      }).sentence,
+    ).toBe(`step 4, note 2. ${parameterAt(223).tooltip}.`);
   });
 
   it("never doubles a full stop on a tooltip that carries its own", () => {

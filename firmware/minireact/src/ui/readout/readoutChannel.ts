@@ -26,9 +26,17 @@ export type ReadoutSource = "hover" | "focus";
  *
  * The sentence has one producer (invariant 5) and both consumers call it; a
  * pushed sentence would go stale the moment the value under the pointer changed
- * the state it describes. A sequencer cell will add its step and note here.
+ * the state it describes.
+ *
+ * A sequencer cell adds `bit`, because a column is a parameter and a cell is a
+ * bit: the address says which step, and nothing but this says which note
+ * (SPEC.md 12.4). The step is the address, so it is not carried twice.
  */
-export type ReadoutTarget = { address: number };
+export type ReadoutTarget = {
+  address: number;
+  /** The note within the column's mask, counted from 0 as the mask is. */
+  bit?: number;
+};
 
 export type ReadoutChannel = {
   show(source: ReadoutSource, target: ReadoutTarget): void;

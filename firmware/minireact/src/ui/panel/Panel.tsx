@@ -17,9 +17,9 @@ import { matchesQuery, plateKey, platesOf, sectionMatchCount } from "./plates";
  *
  * A plate draws every parameter it holds and asks after none of their kinds:
  * the kind is derived from the parameter (SPEC.md 8.1) and the control puts the
- * right widget in the slot. The rhythm masks are the one thing that draws
- * nothing here — the control declines them, because they are one grid and not
- * sixteen controls (SPEC.md 8.3), and that grid arrives with its own ticket.
+ * right widget in the slot. The rhythm masks are the one exception, and the
+ * plate rather than the panel absorbs it: they are one grid and not sixteen
+ * controls (SPEC.md 8.3), on a plate that spans the whole flow.
  *
  * Search is scoped to the section on screen, and that is only admissible
  * because **the tab of every other section lights with its own match count**,

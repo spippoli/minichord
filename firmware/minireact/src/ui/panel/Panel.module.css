@@ -148,3 +148,29 @@
 .plateBody {
   padding: 0.25rem 0;
 }
+
+/*
+ * The plate holding the step sequencer spans the whole flow (SPEC.md 8.3): a
+ * sixteen-step grid squeezed into a 20rem column is a grid nobody can read.
+ * `column-span: all` is what the multi-column flow above offers for exactly
+ * this, and it needs a block box rather than the inline-block a plate is.
+ */
+.plateWide {
+  composes: plate;
+  display: block;
+  column-span: all;
+}
+
+/* Its other controls sit side by side, the grid taking a row of its own. */
+.plateBodyWide {
+  composes: plateBody;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.sequencerSlot {
+  grid-column: 1 / -1;
+  /* At the narrow floor the sixteen steps still fit; below it the panel
+     scrolls sideways on purpose (SPEC.md 7.5), and so does this. */
+  overflow-x: auto;
+}

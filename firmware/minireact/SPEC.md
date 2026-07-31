@@ -1785,8 +1785,11 @@ Resting line, when nothing is hovered or focused:
 > Point at a control, or tab to one, and it explains itself here.
 
 The where-line is `{section} / {group} / {name}` with the raw address after it, and for a sequencer
-cell `{section} / {group} / {name} — step {s}, note {n}` (plus _out of cycle_ when the step is past
-`cycle length`).
+cell the step and the note follow that address:
+`{section} / {group} / {name} — address {a} — step {s}, note {n}` (plus _out of cycle_ when the step
+is past `cycle length`). The address stays because the column _is_ a parameter: the step and the note
+are what the address alone cannot say, not a replacement for it, and the sequencer is precisely the
+place where which address a column holds is least obvious.
 
 The kind note, appended after the tooltip:
 
