@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  CYCLE_LENGTH_ADDRESS,
   RHYTHM_FIRST_ADDRESS,
   RHYTHM_LAST_ADDRESS,
   RHYTHM_NOTE_COUNT,
@@ -8,8 +9,11 @@ import {
   decodeRhythmMask,
   encodeRhythmMask,
   isRhythmAddress,
+  isStepInCycle,
+  rhythmNoteOfBit,
   rhythmStepAddress,
   rhythmStepOfAddress,
+  rhythmVoiceOfBit,
   withRhythmNote,
 } from "./rhythm";
 
@@ -42,6 +46,40 @@ describe("the rhythm address range", () => {
   it("refuses a step outside 0..15", () => {
     expect(() => rhythmStepAddress(-1)).toThrow();
     expect(() => rhythmStepAddress(16)).toThrow();
+  });
+});
+
+describe("the seven rows (SPEC.md 1.5, 8.3)", () => {
+  it("calls bit i note i + 1, as a musician counts", () => {
+    expect(rhythmNoteOfBit(0)).toBe(1);
+    expect(rhythmNoteOfBit(6)).toBe(7);
+  });
+
+  it("folds seven notes onto the chord section's four voices", () => {
+    // Voice i + 1 for the first four, i - 2 for the last three.
+    expect([0, 1, 2, 3, 4, 5, 6].map(rhythmVoiceOfBit)).toEqual([
+      1, 2, 3, 4, 2, 3, 4,
+    ]);
+  });
+
+  it("refuses a bit outside 0..6", () => {
+    expect(() => rhythmNoteOfBit(7)).toThrow();
+    expect(() => rhythmVoiceOfBit(-1)).toThrow();
+  });
+});
+
+describe("the cycle (SPEC.md 1.5, 8.3)", () => {
+  it("reads the length from `cycle length`, at address 188", () => {
+    expect(CYCLE_LENGTH_ADDRESS).toBe(188);
+  });
+
+  it("puts the steps the firmware never reaches outside it", () => {
+    expect(isStepInCycle(0, 4)).toBe(true);
+    expect(isStepInCycle(3, 4)).toBe(true);
+    expect(isStepInCycle(4, 4)).toBe(false);
+    expect(isStepInCycle(15, 16)).toBe(true);
+    // The shortest cycle the parameter declares is one step long.
+    expect(isStepInCycle(1, 1)).toBe(false);
   });
 });
 

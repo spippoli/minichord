@@ -32,8 +32,12 @@ export {
   stepPickerTarget,
 } from "./pickerTargets";
 
-export type { ParameterCondition, ParameterDescription } from "./description";
-export { RESTING_LINE, describeParameter } from "./description";
+export type {
+  ParameterCondition,
+  ParameterDescription,
+  SequencerCell,
+} from "./description";
+export { OUT_OF_CYCLE, RESTING_LINE, describeParameter } from "./description";
 
 export {
   FLOAT_DECIMALS,
@@ -49,6 +53,7 @@ export {
 } from "./conversion";
 
 export {
+  CYCLE_LENGTH_ADDRESS,
   RHYTHM_FIRST_ADDRESS,
   RHYTHM_LAST_ADDRESS,
   RHYTHM_NOTE_COUNT,
@@ -56,7 +61,10 @@ export {
   decodeRhythmMask,
   encodeRhythmMask,
   isRhythmAddress,
+  isStepInCycle,
+  rhythmNoteOfBit,
   rhythmStepAddress,
   rhythmStepOfAddress,
+  rhythmVoiceOfBit,
   withRhythmNote,
 } from "./rhythm";
