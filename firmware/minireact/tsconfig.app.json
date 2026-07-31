@@ -22,5 +22,8 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /* The one test that reads the stylesheets off disk, and therefore needs Node
+     types the app must not have. It is type-checked by `tsconfig.node.json`. */
+  "exclude": ["src/ui/moulding/tokens.test.ts"]
 }

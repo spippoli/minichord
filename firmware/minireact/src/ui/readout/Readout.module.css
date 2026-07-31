@@ -5,15 +5,23 @@
  * characters (median 37), and a strip that resized would move the controls
  * being compared every time the pointer crossed one (SPEC.md 8.2).
  *
- * The colours are the panel's, and the panel is not moulded yet (SPEC.md 7.4):
- * these are placeholders under the token names the moulding will fill.
+ * This is the surface the whole moulding is named after: `--lcd` is the glass,
+ * `--lcd-ink` is what is written on it, and the focus ring everywhere else in
+ * the panel is that same ink (SPEC.md 12.7). It is a *negative* LCD on the dark
+ * moulding — glowing ink on near-black glass — and a *positive* one on the
+ * light moulding: dark ink on grey-green, with no glow, because a glowing
+ * negative LCD on cream plastic in daylight reads as a bug (SPEC.md 7.4).
  */
 
 .readout {
   min-height: 4.25rem;
   padding: 0.5rem 1rem;
-  border-bottom: 1px solid currentColor;
+  border: 1px solid var(--lcd-edge);
+  margin: 0.5rem 1rem;
   font-size: 0.85rem;
+  background: var(--lcd);
+  color: var(--lcd-ink);
+  box-shadow: var(--lcd-glow);
 }
 
 .readout p {
@@ -23,7 +31,7 @@
 .where {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
-  opacity: 0.7;
+  color: var(--lcd-ink-dim);
 }
 
 /* The tooltip and the note read as one paragraph: the note is appended to the
@@ -33,7 +41,7 @@
 }
 
 .note {
-  opacity: 0.7;
+  color: var(--lcd-ink-dim);
 }
 
 .unequipped {
@@ -41,5 +49,5 @@
 }
 
 .resting {
-  opacity: 0.6;
+  color: var(--lcd-ink-dim);
 }

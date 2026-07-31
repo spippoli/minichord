@@ -7,8 +7,10 @@
  * unsupported on purpose, not broken by accident (SPEC.md 7.5). 744 px is
  * 760 minus a vertical scrollbar.
  *
- * The moulding — the two token sets, the milled edges, the caps — arrives with
- * its own ticket (SPEC.md 7.4). What is here is the geometry.
+ * Its colour is the moulding's (SPEC.md 7.4): every value below comes from a
+ * token declared on the panel root, and the plastic and the silkscreen are not
+ * named at all — they are inherited from the root's two surface declarations,
+ * which is why a plate that says nothing about colour is already correct.
  */
 
 .panel {
@@ -33,20 +35,26 @@
   gap: 0.25rem;
 }
 
+/* A tab is a key: a moulded face with a milled edge, pressed in when it is the
+   section on screen. */
 .tab {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.25rem 0.75rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
   font: inherit;
-  background: none;
-  color: inherit;
+  background: var(--key);
+  color: var(--key-ink);
   cursor: pointer;
 }
 
 .tab[aria-selected="true"] {
+  border-color: var(--key-active-edge);
   font-weight: 600;
+  background: var(--key-active);
+  color: var(--key-active-ink);
 }
 
 /* The count itself is the LED; `{n} matches` is the title (SPEC.md A.6). */
@@ -55,8 +63,8 @@
   border-radius: 0.6rem;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  background: currentColor;
-  color: canvas;
+  background: var(--led);
+  color: var(--led-ink);
 }
 
 /* The search box gives way first, so the chrome line holds at the floor. */
@@ -69,14 +77,16 @@
   font-size: 0.85rem;
 }
 
+/* The search box is a window, cast like the value windows it searches. */
 .search input {
   width: 100%;
   min-width: 0;
   padding: 0.2rem 0.4rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--window-edge);
   font: inherit;
-  background: none;
-  color: inherit;
+  background: var(--window);
+  color: var(--window-ink);
+  box-shadow: var(--window-glow);
 }
 
 .folds {
@@ -87,12 +97,19 @@
 
 .folds button {
   padding: 0.2rem 0.6rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
   font: inherit;
   font-size: 0.85rem;
-  background: none;
-  color: inherit;
+  background: var(--key);
+  color: var(--key-ink);
   cursor: pointer;
+}
+
+.folds button:active {
+  border-color: var(--key-active-edge);
+  background: var(--key-active);
+  color: var(--key-active-ink);
 }
 
 /*
@@ -104,11 +121,17 @@
   column-gap: 1.5rem;
 }
 
+/* A plate is a milled panel screwed onto the plastic: a lighter face, a bright
+   top edge and a dark bottom one, which is the whole of the relief. */
 .plate {
   display: inline-block;
   width: 100%;
   margin-bottom: 1rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--edge-plate);
+  border-top-color: var(--edge-light);
+  border-bottom-color: var(--edge-dark);
+  background: var(--plastic-plate);
+  box-shadow: 0 1px 2px var(--plastic-shadow);
   /* A plate is one object: it is never split across two columns. */
   break-inside: avoid;
 }
@@ -125,16 +148,17 @@
   width: 100%;
   padding: 0.3rem 0.5rem;
   border: 0;
-  border-bottom: 1px solid currentColor;
+  border-bottom: 1px solid var(--edge-soft);
   font: inherit;
   text-align: start;
-  background: none;
+  background: var(--plastic-header);
   color: inherit;
   cursor: pointer;
 }
 
 .plateName {
   font-weight: 600;
+  color: var(--silkscreen-strong);
 }
 
 /* Folding hides noise, never state (SPEC.md 7.2). */
@@ -142,7 +166,7 @@
   margin-inline-start: auto;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.75;
+  color: var(--silkscreen-dim);
 }
 
 .plateBody {

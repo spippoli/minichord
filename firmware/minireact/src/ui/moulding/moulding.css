@@ -1,0 +1,249 @@
+/*
+ * The moulding: the panel's colour, and the only place in the app where a
+ * colour is written down (SPEC.md 7.4).
+ *
+ * **The panel is moulded, not painted.** Colour is a token set — plastic,
+ * milled edges, silkscreen, moving parts, lit surfaces — declared here on the
+ * panel root and never a literal at a use site. Everything below draws from
+ * `var(--…)`, which is asserted by `moulding.test.ts` rather than left to
+ * discipline.
+ *
+ * **The light panel is a different object, not the dark one lightened.** Cream
+ * plastic, *dark* fader caps where the dark panel has light ones, and a
+ * *positive* LCD — dark ink on grey-green, with no glow. A glowing negative LCD
+ * is a dark-panel object; on light plastic in daylight it reads as a bug. The
+ * two sets share nothing: 56 tokens each, no value in common, with the LED, the
+ * window and the cap swapping roles between them. That cost is real and is
+ * accepted — a set of "shared neutrals" is exactly how the light panel would
+ * become the dark one lightened.
+ *
+ * The values themselves are the specification's one deliberate opening
+ * (SPEC.md 13.1): the names and their roles are fixed, the hexes are not, and
+ * nobody reviews them. What constrains them anyway is the paragraph above, and
+ * a focus ring legible against plastic in both (SPEC.md 12.7).
+ *
+ * The moulding is chosen by `prefers-color-scheme` alone — see `moulding.ts`
+ * for why that is subscribed to rather than read once, and why the choice
+ * arrives here as an attribute rather than as a media query.
+ */
+
+/*
+ * The dark moulding: graphite plastic, light caps, a negative LCD that glows.
+ */
+[data-moulding="dark"] {
+  /* Plastic — the body the whole panel is cast from. */
+  --plastic: #22252a;
+  --plastic-deep: #16181c;
+  --plastic-plate: #2a2e35;
+  --plastic-header: #31363e;
+  --plastic-well: #191c21;
+  --plastic-dead: #26282c;
+  --plastic-shadow: #0d0f12;
+
+  /* Milled edges — where one moulded surface meets another. */
+  --edge: #464d57;
+  --edge-soft: #383e46;
+  --edge-strong: #545c68;
+  --edge-light: #5d6673;
+  --edge-dark: #14161a;
+  --edge-well: #0f1114;
+  --edge-plate: #414852;
+
+  /* Silkscreen — what is printed on the plastic and never lit. */
+  --silkscreen: #d5dae2;
+  --silkscreen-strong: #f2f5f9;
+  --silkscreen-dim: #99a2ae;
+  --silkscreen-faint: #6d7684;
+  --silkscreen-dead: #5a616c;
+  --silkscreen-heading: #e8ecf2;
+
+  /* Moving parts — caps, keys, rockers: the things a hand touches. */
+  --cap: #cdd3db;
+  --cap-edge: #eef1f5;
+  --cap-shadow: #0b0d10;
+  --cap-dead: #7b818b;
+  --slot-track: #121417;
+  --slot-track-edge: #3c424b;
+  --key: #363c45;
+  --key-edge: #4b525d;
+  --key-ink: #dfe4eb;
+  --key-active: #4e5764;
+  --key-active-ink: #fbfdff;
+  --key-active-edge: #6a7482;
+  --rocker-well: #171a1e;
+  --rocker-well-on: #2f5d46;
+  --rocker-cap: #c6ccd4;
+  --rocker-cap-edge: #e6eaf0;
+
+  /* Lit surfaces — the LCD, the windows, the LEDs, the sequencer pads. */
+  --lcd: #0c1410;
+  --lcd-ink: #7ef0a8;
+  --lcd-ink-dim: #4b9e6d;
+  --lcd-edge: #050907;
+  --lcd-glow: 0 0 10px #12331f;
+  --window: #0e1712;
+  --window-ink: #8df2b4;
+  --window-edge: #060c08;
+  --window-glow: 0 0 6px #143b25;
+  --menu: #1b2b21;
+  --menu-ink: #a9e9c2;
+  --menu-edge: #2b4735;
+  --led: #f0b429;
+  --led-ink: #1a1206;
+  --led-bezel: #0a0c0e;
+  --pad: #1e2228;
+  --pad-edge: #3f4652;
+  --pad-on: #6fe39b;
+  --pad-on-glow: 0 0 5px #1d4c31;
+  --spectrum: linear-gradient(
+    to right,
+    hsl(0 85% 55%),
+    hsl(60 85% 55%),
+    hsl(120 85% 55%),
+    hsl(180 85% 55%),
+    hsl(240 85% 55%),
+    hsl(300 85% 55%),
+    hsl(360 85% 55%)
+  );
+}
+
+/*
+ * The light moulding: cream plastic, dark caps, a positive LCD that does not
+ * glow. Read down the two sets side by side and the three swaps are the point —
+ * `--cap` goes from near-white to near-black, `--window` from a lit pane to a
+ * printed recess, `--led` from a bright dot on dark plastic to a saturated one
+ * on cream.
+ */
+[data-moulding="light"] {
+  /* Plastic. */
+  --plastic: #e8e2d4;
+  --plastic-deep: #d8d1c0;
+  --plastic-plate: #f1ece0;
+  --plastic-header: #e2dbc9;
+  --plastic-well: #cfc8b6;
+  --plastic-dead: #ded8c9;
+  --plastic-shadow: #b7ae99;
+
+  /* Milled edges. */
+  --edge: #b0a68f;
+  --edge-soft: #c8bfa9;
+  --edge-strong: #94896f;
+  --edge-light: #fdfbf4;
+  --edge-dark: #a1957a;
+  --edge-well: #8d8268;
+  --edge-plate: #bdb39b;
+
+  /* Silkscreen. */
+  --silkscreen: #3b382e;
+  --silkscreen-strong: #16150f;
+  --silkscreen-dim: #6f6a58;
+  --silkscreen-faint: #8b846f;
+  --silkscreen-dead: #a09979;
+  --silkscreen-heading: #24221a;
+
+  /* Moving parts — the caps are dark here, and that is the swap. */
+  --cap: #3f4139;
+  --cap-edge: #22241e;
+  --cap-shadow: #aaa08a;
+  --cap-dead: #9a9483;
+  --slot-track: #c4bca8;
+  --slot-track-edge: #9e957e;
+  --key: #ddd6c4;
+  --key-edge: #a89e86;
+  --key-ink: #33312a;
+  --key-active: #4a4c42;
+  --key-active-ink: #f7f4ea;
+  --key-active-edge: #2c2e27;
+  --rocker-well: #c0b8a4;
+  --rocker-well-on: #7f9a72;
+  --rocker-cap: #45473e;
+  --rocker-cap-edge: #292b25;
+
+  /* Lit surfaces — positive LCD: dark ink on grey-green, and no glow. The
+     `--*-glow` tokens carry a printed recess instead, which is what a
+     daylight-readable LCD actually looks like. */
+  --lcd: #b7c2a4;
+  --lcd-ink: #1e2a18;
+  --lcd-ink-dim: #4d5a42;
+  --lcd-edge: #8b9878;
+  --lcd-glow: inset 0 1px 2px #97a486;
+  --window: #c2cbb0;
+  --window-ink: #232f1c;
+  --window-edge: #96a382;
+  --window-glow: inset 0 1px 2px #a4b192;
+  --menu: #cdd4bd;
+  --menu-ink: #2a3522;
+  --menu-edge: #9aa686;
+  --led: #a8541a;
+  --led-ink: #fdf6e8;
+  --led-bezel: #8f866f;
+  --pad: #d5cfbd;
+  --pad-edge: #a59b83;
+  --pad-on: #3c5c2e;
+  --pad-on-glow: inset 0 1px 2px #2a4220;
+  --spectrum: linear-gradient(
+    to right,
+    hsl(0 80% 42%),
+    hsl(60 80% 42%),
+    hsl(120 80% 42%),
+    hsl(180 80% 42%),
+    hsl(240 80% 42%),
+    hsl(300 80% 42%),
+    hsl(360 80% 42%)
+  );
+}
+
+/*
+ * Above the tokens, the two surface declarations: the plastic under everything
+ * and the silkscreen on top of it, stated once on the root. Every surface below
+ * inherits them, which is why most of the panel names no token at all — a plate
+ * that says nothing is plastic with printing on it, and that is correct.
+ *
+ * `color-scheme` follows the moulding rather than the OS so that the scrollbars
+ * and the form controls Chromium draws for itself are cast from the same block.
+ */
+[data-moulding] {
+  background: var(--plastic);
+  color: var(--silkscreen);
+}
+
+[data-moulding="dark"] {
+  color-scheme: dark;
+}
+
+[data-moulding="light"] {
+  color-scheme: light;
+}
+
+/*
+ * And above those, one tint rule: the bank's own hue.
+ *
+ * It reaches exactly one element, the bank LED in the strip — not the windows,
+ * not the lit surfaces, not the moulding. The hue is the bank's *identity*, and
+ * an identity belongs in one place rather than smeared across the surface being
+ * worked on. `--hue` is set inline on the root from the live value of address
+ * 20; `--cap-hue` is set inline on the `bank color` control alone, where the
+ * value under the hand *is* a colour (SPEC.md 8.5), and both resolve at the
+ * element that carries them.
+ *
+ * The saturation is the firmware's: it drives the physical LED at full.
+ *
+ * A constraint recorded so it is not rediscovered: the two divergence LEDs of
+ * SPEC.md 7.3 sit side by side and the second is blue, so if both followed the
+ * bank they would stop being readable at around hue 220 — and bank 7 ships at
+ * 220. State read in the bank's own colour stops reading as state.
+ */
+[data-moulding] {
+  --tint: hsl(var(--hue) 100% 50%);
+  --cap-tint: hsl(var(--cap-hue) 100% 50%);
+}
+
+/*
+ * One focus ring, and it is the LCD's own ink in each moulding (SPEC.md 12.7).
+ * Rejected: a dedicated focus colour distinct from the ink — a sixth colour, to
+ * buy what thickness already buys. Both mouldings separate cleanly with the ink,
+ * so the contrast question SPEC.md 7.4 hands over resolves as a non-question.
+ */
+[data-moulding] {
+  --focus-ring: var(--lcd-ink);
+}

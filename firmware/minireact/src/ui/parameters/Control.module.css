@@ -1,11 +1,14 @@
 /*
  * One control: name, address, the slot, the value window.
  *
- * The panel is not moulded yet (SPEC.md 7.4) — the two token sets, the milled
- * edges and the caps arrive with the moulding. What is here is the geometry the
- * repertoire needs, plus the one thing that must not wait: nothing declares its
- * own focus ring. There is exactly one, in `index.css`, and it is the reason
- * this file has no `:focus` rule at all (SPEC.md 12.7).
+ * The moving parts live here: the cap in its milled slot, the rocker, the keys,
+ * and the window that reads the value back. Every colour is a token from the
+ * panel root (SPEC.md 7.4) — and the cap is the clearest of the three swaps
+ * between the two mouldings, near-white on graphite and near-black on cream.
+ *
+ * Nothing here declares its own focus ring. There is exactly one, in
+ * `index.css`, and it is the reason this file has no `:focus` rule at all
+ * (SPEC.md 12.7).
  */
 
 .control {
@@ -28,7 +31,7 @@
   grid-area: address;
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.5;
+  color: var(--silkscreen-dim);
 }
 
 /*
@@ -48,10 +51,36 @@
   grid-column: 1 / -1;
 }
 
+/*
+ * The fader: a cap riding in a milled slot. Chromium's own range widget is
+ * given up entirely — the track and the thumb are the two moulded pieces, and
+ * neither survives being left to the platform in the middle of an 80s panel.
+ */
 .fader {
+  appearance: none;
   width: 100%;
   min-width: 6rem;
   margin: 0;
+  background: none;
+}
+
+.fader::-webkit-slider-runnable-track {
+  height: 0.4rem;
+  border: 1px solid var(--slot-track-edge);
+  border-radius: 0.2rem;
+  background: var(--slot-track);
+}
+
+.fader::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.6rem;
+  /* Taller than the slot, and centred on it: the cap sits *in* the milling. */
+  height: 1.1rem;
+  margin-top: -0.4rem;
+  border: 1px solid var(--cap-edge);
+  border-radius: 1px;
+  background: var(--cap);
+  box-shadow: 0 1px 2px var(--cap-shadow);
 }
 
 /*
@@ -60,29 +89,20 @@
  * swatch at full saturation sits beside it — the panel may ignore the hue
  * everywhere but the strip, the device never does.
  */
-.spectrum {
-  appearance: none;
+.spectrum::-webkit-slider-runnable-track {
   height: 0.9rem;
+  border-color: var(--slot-track-edge);
   border-radius: 0.45rem;
-  background: linear-gradient(
-    to right,
-    hsl(0 90% 50%),
-    hsl(60 90% 50%),
-    hsl(120 90% 50%),
-    hsl(180 90% 50%),
-    hsl(240 90% 50%),
-    hsl(300 90% 50%),
-    hsl(360 90% 50%)
-  );
+  background: var(--spectrum);
 }
 
 .spectrum::-webkit-slider-thumb {
-  appearance: none;
-  width: 0.8rem;
-  height: 0.8rem;
-  border: 1px solid currentColor;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-top: 0;
+  border-color: var(--cap-edge);
   border-radius: 50%;
-  background: hsl(var(--cap-hue) 100% 50%);
+  background: var(--cap-tint);
 }
 
 .withSwatch {
@@ -97,9 +117,9 @@
   flex: none;
   width: 0.9rem;
   height: 0.9rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--led-bezel);
   border-radius: 2px;
-  background: hsl(var(--cap-hue) 100% 50%);
+  background: var(--cap-tint);
 }
 
 /* An interrupter, not a two-position fader (SPEC.md 8.1). */
@@ -109,17 +129,24 @@
   width: 2.4rem;
   height: 1.1rem;
   padding: 1px;
-  border: 1px solid currentColor;
+  border: 1px solid var(--edge-well);
   border-radius: 0.55rem;
-  background: none;
+  background: var(--rocker-well);
   cursor: pointer;
+}
+
+/* The well lights when the interrupter is closed; the cap is the moving part
+   and keeps its own colour, so the movement is never the only cue. */
+.rocker[aria-checked="true"] {
+  background: var(--rocker-well-on);
 }
 
 .rockerCap {
   width: 0.85rem;
   height: 0.85rem;
+  border: 1px solid var(--rocker-cap-edge);
   border-radius: 50%;
-  background: currentColor;
+  background: var(--rocker-cap);
   transition: margin-inline-start 80ms linear;
 }
 
@@ -136,12 +163,12 @@
   width: 100%;
   min-width: 0;
   padding: 0.1rem 0.25rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--menu-edge);
   font: inherit;
   font-size: 0.8rem;
   text-align: right;
-  background: none;
-  color: inherit;
+  background: var(--menu);
+  color: var(--menu-ink);
 }
 
 .menu option {
@@ -157,12 +184,19 @@
 .stepKey {
   width: 1.4rem;
   padding: 0;
-  border: 1px solid currentColor;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
   font: inherit;
   line-height: 1.2;
-  background: none;
-  color: inherit;
+  background: var(--key);
+  color: var(--key-ink);
   cursor: pointer;
+}
+
+.stepKey:active {
+  border-color: var(--key-active-edge);
+  background: var(--key-active);
+  color: var(--key-active-ink);
 }
 
 /*
@@ -173,13 +207,16 @@
   grid-area: window;
   min-width: 4.5rem;
   padding: 0.1rem 0.25rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--window-edge);
   font: inherit;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
-  background: none;
-  color: inherit;
+  background: var(--window);
+  color: var(--window-ink);
+  /* A lit pane on the dark moulding, a printed recess on the light one: the
+     window is the second of the three role swaps (SPEC.md 7.4). */
+  box-shadow: var(--window-glow);
 }
 
 /*
@@ -188,6 +225,28 @@
  */
 .control[data-unequipped] .slot {
   cursor: not-allowed;
-  filter: grayscale(1);
-  opacity: 0.5;
+}
+
+.control[data-unequipped] .name,
+.control[data-unequipped] .address {
+  color: var(--silkscreen-dead);
+}
+
+.control[data-unequipped] .fader::-webkit-slider-runnable-track,
+.control[data-unequipped] .rocker,
+.control[data-unequipped] .menu {
+  border-color: var(--edge-plate);
+  background: var(--plastic-dead);
+}
+
+/* The cap goes dead — the one moulded piece that says the slot is unequipped. */
+.control[data-unequipped] .fader::-webkit-slider-thumb,
+.control[data-unequipped] .rockerCap {
+  border-color: var(--edge-plate);
+  background: var(--cap-dead);
+  box-shadow: none;
+}
+
+.control[data-unequipped] .menu {
+  color: var(--silkscreen-dead);
 }

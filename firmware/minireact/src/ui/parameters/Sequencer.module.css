@@ -6,8 +6,8 @@
  * contents` so that the `grid → row → rowheader/gridcell → checkbox` tree
  * survives the layout — verified with a real screen reader (SPEC.md 12.4).
  *
- * The moulding has not been designed yet (SPEC.md 7.4): what is here is the
- * geometry, drawn in `currentColor` like the rest of the panel so far.
+ * The grid is a milled bed with a pad in every cell, and every colour is a
+ * token from the panel root (SPEC.md 7.4).
  */
 
 .grid {
@@ -15,6 +15,8 @@
   grid-template-columns: auto repeat(16, 1fr);
   gap: 2px;
   padding: 0.5rem;
+  border: 1px solid var(--edge-well);
+  background: var(--plastic-well);
 }
 
 /* The row is a wrapper for the reader, and nothing at all for the layout. */
@@ -31,7 +33,7 @@
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  opacity: 0.75;
+  color: var(--silkscreen-dim);
 }
 
 .noteHead {
@@ -44,7 +46,7 @@
 }
 
 .voice {
-  opacity: 0.6;
+  color: var(--silkscreen-faint);
 }
 
 .cell {
@@ -58,14 +60,16 @@
   width: 12px;
   height: 12px;
   padding: 0;
-  border: 1px solid currentColor;
-  background: none;
+  border: 1px solid var(--pad-edge);
+  background: var(--pad);
   color: inherit;
   cursor: pointer;
 }
 
 .bit[aria-checked="true"] {
-  background: currentColor;
+  border-color: var(--pad-on);
+  background: var(--pad-on);
+  box-shadow: var(--pad-on-glow);
 }
 
 /*
@@ -73,17 +77,19 @@
  * reaches them, so drawing all sixteen identically is a quiet lie — but
  * shortening the cycle must not destroy what lies past the end (SPEC.md 8.3).
  */
-.stepHead[data-out-of-cycle],
-.bit[data-out-of-cycle] {
-  opacity: 0.4;
+.stepHead[data-out-of-cycle] {
+  color: var(--silkscreen-faint);
 }
 
 .bit[data-out-of-cycle] {
   border-style: dashed;
+  opacity: 0.5;
 }
 
 /* An unequipped slot keeps its place; the cell is dead, not the grid dimmed. */
 .bit[aria-disabled="true"] {
+  border-color: var(--edge-plate);
+  background: var(--plastic-dead);
+  box-shadow: none;
   cursor: not-allowed;
-  filter: grayscale(1);
 }
