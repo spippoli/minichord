@@ -37,7 +37,12 @@ import { MinichordSimulator } from "./dev/simulator";
 
 const simulator = new MinichordSimulator();
 const transport = new MinichordTransport({
-  requestAccess: simulator.requestAccess,
+  // The seam takes no arguments — asking for sysex is the injection site's
+  // business, and the simulator refuses access without it.
+  requestAccess: () => simulator.requestAccess({ sysex: true }),
+  // Mounted in a browser, skip the real permission query too, or the gate
+  // still stalls on `navigator.permissions`.
+  queryPermission: async () => "granted" as PermissionState,
 });
 
 // drive the physical side the app cannot reach
