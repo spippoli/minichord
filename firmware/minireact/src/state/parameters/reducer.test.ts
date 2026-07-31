@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { BANK_ADDRESS } from "../../domain";
+import { BANK_ADDRESS, byAddress, defaultWire } from "../../domain";
 import { PARAMETER_COUNT } from "../../transport";
 import type { ConnectionStatus } from "../connection/reducer";
 import type { AppEvent } from "../events";
 import {
   NEUTRALISED,
+  differsFromDefault,
+  editBuffer,
   firmwareVersion,
   isEdited,
   initialParametersState,
@@ -286,5 +288,101 @@ describe("the reference the edited count compares against (SPEC.md 10.3)", () =>
 
   it("has nothing edited before the first dump", () => {
     expect(isEdited(initialParametersState, 40)).toBe(false);
+  });
+});
+
+describe("the blue LED, against the factory default (SPEC.md 7.3)", () => {
+  /** A dump putting every parameter at the value `parameters.json` declares. */
+  function factoryDump(): number[] {
+    const values = identityDump();
+    for (const [address, parameter] of byAddress) {
+      values[address] = defaultWire(parameter);
+    }
+    return values;
+  }
+
+  it("is dark when the value is the one the file declares", () => {
+    const state = dumped(factoryDump());
+    for (const address of [40, 120, 220]) {
+      expect(differsFromDefault(state, address)).toBe(false);
+    }
+  });
+
+  it("lights on a value the file does not declare", () => {
+    const parameter = byAddress.get(40)!;
+    const state = apply(
+      { type: "edit", address: 40, value: defaultWire(parameter) + 1 },
+      "connected",
+      dumped(factoryDump()),
+    ).state;
+
+    expect(differsFromDefault(state, 40)).toBe(true);
+  });
+
+  it("is independent of the amber one: a saved bank can still be off default", () => {
+    // The reference is captured from the dump itself, so nothing is edited —
+    // and the values are deliberately not the factory ones.
+    const state = dumped();
+    expect(isEdited(state, 40)).toBe(false);
+    expect(differsFromDefault(state, 40)).toBe(
+      state.values![40] !== defaultWire(byAddress.get(40)!),
+    );
+  });
+
+  it("never compares the five fictions or the firmware version", () => {
+    const state = dumped(factoryDump());
+    for (const address of [...NEUTRALISED.keys(), 7]) {
+      expect(differsFromDefault(state, address)).toBe(false);
+    }
+  });
+
+  it("says nothing about an address no parameter claims", () => {
+    expect(differsFromDefault(dumped(), 18)).toBe(false);
+  });
+
+  it("has nothing off default before the first dump", () => {
+    expect(differsFromDefault(initialParametersState, 40)).toBe(false);
+  });
+});
+
+describe("the edit buffer the dock lists (SPEC.md 7.3, A.6)", () => {
+  it("is empty on the dump that captured the reference", () => {
+    expect(editBuffer(dumped())).toEqual([]);
+  });
+
+  it("carries what the value was and what it is", () => {
+    const state = apply(
+      { type: "edit", address: 40, value: 999 },
+      "connected",
+      dumped(),
+    ).state;
+
+    const rows = editBuffer(state);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].parameter.address).toBe(40);
+    expect(rows[0].stored).toBe(40);
+    expect(rows[0].current).toBe(999);
+  });
+
+  it("never lists the five physical knobs, which get one line instead", () => {
+    // They are the `hidden` group, so they are not among the 189 the panel
+    // draws — and the dock's fiction line is the whole of what it says of them.
+    const drifted = (() => {
+      const state = dumped();
+      return {
+        ...state,
+        values: state.values!.map((value, address) =>
+          address <= 7 ? value + 1 : value,
+        ),
+      };
+    })();
+
+    for (const row of editBuffer(drifted)) {
+      expect(row.parameter.address).toBeGreaterThan(7);
+    }
+  });
+
+  it("holds nothing before the first dump", () => {
+    expect(editBuffer(initialParametersState)).toEqual([]);
   });
 });

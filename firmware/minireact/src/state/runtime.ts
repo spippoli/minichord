@@ -4,6 +4,7 @@ import {
   type TransportEvent,
   type Unsubscribe,
 } from "../transport";
+import { makeBulkWrite, type BulkWriteResult } from "./bulkWrite";
 import { isCandidatePort } from "./connection/ports";
 import type { Effect } from "./effects";
 import type { AppEvent } from "./events";
@@ -47,12 +48,24 @@ export type RuntimeOptions = {
   probeTimeoutMs?: number;
   /** How long a dump request waits before the retry of SPEC.md 5.9. */
   dumpRetryMs?: number;
+  /** How long a bulk write waits for the dump that confirms it. */
+  bulkDumpTimeoutMs?: number;
   /** The animation frame the write policy flushes on (SPEC.md 5.7). */
   scheduleFlush?: FrameScheduler;
 };
 
 const PROBE_TIMEOUT_MS = 1000;
 const DUMP_RETRY_MS = 1000;
+
+/**
+ * The window a bulk write gives the confirming dump.
+ *
+ * SPEC.md 1.6 budgets ~148 ms of device time for 254 messages *before* the dump
+ * can even be asked for, and calls that a lower bound. This is that bound with
+ * room around it: it is not a retry, it is the point past which the device is
+ * not answering and the caller is owed a count rather than a hung promise.
+ */
+const BULK_DUMP_TIMEOUT_MS = 2000;
 
 const scheduleOnFrame: FrameScheduler = (flush) => {
   if (typeof requestAnimationFrame === "function") {
@@ -85,6 +98,7 @@ export class Runtime {
   private readonly supported: boolean;
   private readonly probeTimeoutMs: number;
   private readonly dumpRetryMs: number;
+  private readonly bulkDumpTimeoutMs: number;
   private readonly scheduleFlush: FrameScheduler;
 
   private state: AppState = initialAppState;
@@ -93,6 +107,10 @@ export class Runtime {
   private dumpRetryTimer: ReturnType<typeof setTimeout> | null = null;
   /** At most one value per address, waiting for the frame (SPEC.md 5.7). */
   private readonly pendingWrites = new Map<number, number>();
+  /** Who is waiting for the next dump: at most one bulk write at a time. */
+  private readonly dumpWaiters = new Set<
+    (values: readonly number[] | null) => void
+  >();
   private cancelFlush: (() => void) | null = null;
   private started = false;
   private disposed = false;
@@ -102,6 +120,7 @@ export class Runtime {
     this.supported = options.supported ?? MinichordTransport.isSupported();
     this.probeTimeoutMs = options.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
     this.dumpRetryMs = options.dumpRetryMs ?? DUMP_RETRY_MS;
+    this.bulkDumpTimeoutMs = options.bulkDumpTimeoutMs ?? BULK_DUMP_TIMEOUT_MS;
     this.scheduleFlush = options.scheduleFlush ?? scheduleOnFrame;
   }
 
@@ -141,6 +160,9 @@ export class Runtime {
     this.cancelDumpRetry();
     this.cancelPendingFlush();
     this.pendingWrites.clear();
+    // A bulk write in flight is owed an answer, and "no dump" is one: a hung
+    // promise would keep the caller's button saying "Applying…" forever.
+    this.settleDumpWaiters(null);
     for (const unsubscribe of this.subscriptions.splice(0)) unsubscribe();
     this.listeners.clear();
   }
@@ -180,12 +202,51 @@ export class Runtime {
     this.dispatch({ type: "pointer-up" });
   }
 
+  /**
+   * Write a set of addresses and report what did not take (SPEC.md 5.8).
+   *
+   * The signature the three callers see is the specification's: a map in, a
+   * count out. What it costs — unpaced writes, a dump, a comparison excluding
+   * 2–7, a repair round and a second dump — is `bulkWrite.ts`'s, and the
+   * runtime contributes only the wire and the waiting, neither of which a pure
+   * module can hold.
+   *
+   * It **bypasses the coalescing queue on purpose**: that queue exists to keep
+   * a 1000 Hz mouse off the wire, and a bulk write is 189 distinct addresses
+   * that would each survive coalescing anyway (SPEC.md 5.7).
+   *
+   * With no wire it writes nothing and says so. The reducer refuses single
+   * edits while the connection is interrupted (SPEC.md 5.2), and a bulk write
+   * that went around it would be the one lie that rule exists to prevent.
+   */
+  bulkWrite(values: ReadonlyMap<number, number>): Promise<BulkWriteResult> {
+    if (this.state.connection.status !== "connected" || this.disposed) {
+      return Promise.resolve({
+        applied: 0,
+        diverged: [...values.keys()],
+      });
+    }
+
+    return makeBulkWrite({
+      send: (address, value) => {
+        this.transport.sendParameter(address, value);
+      },
+      requestDump: () => {
+        this.transport.requestDump();
+      },
+      nextDump: () => this.nextDump(),
+    })(values);
+  }
+
   // -- internals -----------------------------------------------------------
 
   private onTransportEvent(event: TransportEvent): void {
     switch (event.type) {
       case "dump":
         this.dispatch({ type: "dump", values: event.values });
+        // After the store, never before: a bulk write that resolves first would
+        // hand its caller a count describing a panel that has not redrawn.
+        this.settleDumpWaiters(event.values);
         return;
       case "connection":
         this.dispatch({
@@ -301,6 +362,33 @@ export class Runtime {
     for (const [address, value] of pending) {
       this.transport.sendParameter(address, value);
     }
+  }
+
+  /**
+   * The next dump, or `null` once the window of SPEC.md 1.6 has gone by.
+   *
+   * The dump is a subscription rather than the answer to a request — the device
+   * announces dumps nobody asked for, and one cannot be told from the other
+   * (SPEC.md 1.3). This is the one place that fact is turned into a promise,
+   * and it is deliberately not a general "solicited dump" abstraction: a bulk
+   * write is the only caller that needs to wait for one.
+   */
+  private nextDump(): Promise<readonly number[] | null> {
+    return new Promise((resolve) => {
+      const settle = (values: readonly number[] | null) => {
+        clearTimeout(timer);
+        this.dumpWaiters.delete(settle);
+        resolve(values);
+      };
+      const timer = setTimeout(() => {
+        settle(null);
+      }, this.bulkDumpTimeoutMs);
+      this.dumpWaiters.add(settle);
+    });
+  }
+
+  private settleDumpWaiters(values: readonly number[] | null): void {
+    for (const waiter of [...this.dumpWaiters]) waiter(values);
   }
 
   private cancelPendingFlush(): void {

@@ -21,5 +21,12 @@ export type {
   ConnectionStatus,
   GateStatus,
 } from "./connection/reducer";
-export { firmwareVersion, isEdited } from "./parameters/reducer";
-export type { ParametersState } from "./parameters/reducer";
+export {
+  differsFromDefault,
+  editBuffer,
+  firmwareVersion,
+  isEdited,
+} from "./parameters/reducer";
+export type { EditedParameter, ParametersState } from "./parameters/reducer";
+
+export type { BulkWriteResult } from "./bulkWrite";

@@ -67,6 +67,7 @@ function harness(
       supported: true,
       probeTimeoutMs: 25,
       dumpRetryMs: 50,
+      bulkDumpTimeoutMs: 200,
       scheduleFlush: (flush) => {
         pendingFrame = flush;
         return () => {
@@ -310,6 +311,53 @@ describe("mid-session (SPEC.md 9.4, 9.5)", () => {
     h.simulator.reconnect();
     await until(() => statusOf(h.runtime) === "connected");
     expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+});
+
+describe("the bulk write, through the wire (SPEC.md 5.8)", () => {
+  it("lands every address and confirms it with a dump", async () => {
+    const h = harness();
+    await connect(h);
+
+    const result = await h.runtime.bulkWrite(
+      new Map([
+        [40, 3],
+        [41, 900],
+      ]),
+    );
+
+    expect(result).toEqual({ applied: 2, diverged: [] });
+    // The confirming dump overruled the store, so the panel is showing what the
+    // device holds and not what the caller hoped for (SPEC.md 5.3).
+    const { values } = h.runtime.getState().parameters;
+    expect(values?.[40]).toBe(3);
+    expect(values?.[41]).toBe(900);
+  });
+
+  it("goes out without waiting for a frame", async () => {
+    // The coalescing queue exists to keep a 1000 Hz mouse off the wire; a bulk
+    // write is distinct addresses that would each survive it anyway. No frame
+    // is run here, and the write still lands.
+    const h = harness();
+    await connect(h);
+
+    await h.runtime.bulkWrite(new Map([[40, 5]]));
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(5);
+  });
+
+  it("writes nothing with no wire, and says everything is unconfirmed", async () => {
+    const h = harness();
+    await connect(h);
+    const before = h.runtime.getState().parameters.values?.[40];
+
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+
+    // The reducer refuses single edits while the connection is interrupted; a
+    // bulk write going around that would be the one lie the rule prevents.
+    const result = await h.runtime.bulkWrite(new Map([[40, 999]]));
+    expect(result).toEqual({ applied: 0, diverged: [40] });
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(before);
   });
 });
 
