@@ -21,5 +21,5 @@ export type {
   ConnectionStatus,
   GateStatus,
 } from "./connection/reducer";
-export { firmwareVersion } from "./parameters/reducer";
+export { firmwareVersion, isEdited } from "./parameters/reducer";
 export type { ParametersState } from "./parameters/reducer";

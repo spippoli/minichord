@@ -12,11 +12,15 @@
  * is made while the control is **not yet mounted**, which is what rules out a
  * registry keyed on mount.
  *
- * Today there is no section to switch and no plate to unfold — the panel is one
- * flat list — so `reveal` is where those two land, in front of the same wait.
- * The post-commit query exists now because a caller that learns it later has
- * already been written against a function that "finds nothing", which is
- * exactly the failure the invariant is worded against.
+ * Exactly one panel is mounted at a time (SPEC.md 9.1: the app is the gate or
+ * the editor, never both), which is what lets this be one function in a module
+ * rather than a context. The disposer only clears what it set, so a remount in
+ * either order leaves the live panel holding it.
+ *
+ * Switching the section and unfolding the plate are the panel's own state, so
+ * the panel hands them over through `setParameterReveal` and this module holds
+ * one function rather than a context: `focusParameter` is called from places
+ * that are not components, and its callers pass one number.
  */
 
 const PARAMETER_ATTRIBUTE = "data-parameter-address";
@@ -27,10 +31,20 @@ export function parameterAnchor(address: number): Record<string, number> {
 }
 
 /**
- * Bring the control's section and plate on screen. A no-op until there are any
- * (SPEC.md 7.2), and the reason this function is not simply `querySelector`.
+ * Bring the control's section and plate on screen — the reason this function is
+ * not simply `querySelector`. It is a no-op with no panel mounted.
  */
-function reveal(_address: number): void {}
+let reveal: (address: number) => void = () => {};
+
+/** The panel lends its section and fold state, and takes them back on unmount. */
+export function setParameterReveal(
+  next: (address: number) => void,
+): () => void {
+  reveal = next;
+  return () => {
+    if (reveal === next) reveal = () => {};
+  };
+}
 
 /** After React has committed whatever `reveal` asked for. */
 function afterCommit(act: () => void): void {
