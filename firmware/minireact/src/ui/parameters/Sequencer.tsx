@@ -8,6 +8,7 @@ import {
   isStepInCycle,
   rhythmNoteOfBit,
   rhythmVoiceOfBit,
+  sequencerCell,
   type Parameter,
 } from "../../domain";
 import { parameterAnchor } from "../panel/focusParameter";
@@ -159,11 +160,7 @@ export function Sequencer({
             const inCycle = isStepInCycle(step, cycleLength);
             const description = describeParameter(column, {
               firmwareVersion,
-              cell: {
-                step: step + 1,
-                note: rhythmNoteOfBit(note),
-                outOfCycle: !inCycle,
-              },
+              cell: sequencerCell(step, note, cycleLength),
             });
             const target = { address: column.address, bit: note };
 

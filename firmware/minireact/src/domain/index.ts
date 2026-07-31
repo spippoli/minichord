@@ -32,11 +32,7 @@ export {
   stepPickerTarget,
 } from "./pickerTargets";
 
-export type {
-  ParameterCondition,
-  ParameterDescription,
-  SequencerCell,
-} from "./description";
+export type { ParameterCondition, ParameterDescription } from "./description";
 export { OUT_OF_CYCLE, RESTING_LINE, describeParameter } from "./description";
 
 export {
@@ -52,6 +48,7 @@ export {
   wireToPosition,
 } from "./conversion";
 
+export type { SequencerCell } from "./rhythm";
 export {
   CYCLE_LENGTH_ADDRESS,
   RHYTHM_FIRST_ADDRESS,
@@ -66,5 +63,7 @@ export {
   rhythmStepAddress,
   rhythmStepOfAddress,
   rhythmVoiceOfBit,
+  sequencerCell,
+  sequencerCellOfAddress,
   withRhythmNote,
 } from "./rhythm";

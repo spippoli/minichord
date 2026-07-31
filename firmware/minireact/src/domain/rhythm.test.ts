@@ -14,6 +14,8 @@ import {
   rhythmStepAddress,
   rhythmStepOfAddress,
   rhythmVoiceOfBit,
+  sequencerCell,
+  sequencerCellOfAddress,
   withRhythmNote,
 } from "./rhythm";
 
@@ -80,6 +82,40 @@ describe("the cycle (SPEC.md 1.5, 8.3)", () => {
     expect(isStepInCycle(15, 16)).toBe(true);
     // The shortest cycle the parameter declares is one step long.
     expect(isStepInCycle(1, 1)).toBe(false);
+  });
+});
+
+describe("the cell a description is written about", () => {
+  it("counts the step and the note from 1, as the grid shows them", () => {
+    expect(sequencerCell(0, 0, 16)).toEqual({
+      step: 1,
+      note: 1,
+      outOfCycle: false,
+    });
+    expect(sequencerCell(15, 6, 16)).toEqual({
+      step: 16,
+      note: 7,
+      outOfCycle: false,
+    });
+  });
+
+  it("marks a step the firmware never reaches", () => {
+    expect(sequencerCell(4, 0, 4).outOfCycle).toBe(true);
+    expect(sequencerCell(3, 0, 4).outOfCycle).toBe(false);
+  });
+
+  it("refuses a step or a note off the grid", () => {
+    expect(() => sequencerCell(16, 0, 16)).toThrow();
+    expect(() => sequencerCell(0, 7, 16)).toThrow();
+  });
+
+  it("finds the same cell from an address and a bit", () => {
+    expect(sequencerCellOfAddress(223, 1, 16)).toEqual(sequencerCell(3, 1, 16));
+  });
+
+  it("answers for nothing but a cell: no bit, or no rhythm address", () => {
+    expect(sequencerCellOfAddress(223, undefined, 16)).toBeUndefined();
+    expect(sequencerCellOfAddress(188, 0, 16)).toBeUndefined();
   });
 });
 

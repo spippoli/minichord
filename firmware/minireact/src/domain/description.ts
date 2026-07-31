@@ -16,24 +16,11 @@
 
 import { kindOf, type ControlKind } from "./kind";
 import type { Parameter, Section } from "./parameters";
+import type { SequencerCell } from "./rhythm";
 
 /** What the readout says when nothing is hovered and nothing is focused. */
 export const RESTING_LINE =
   "Point at a control, or tab to one, and it explains itself here.";
-
-/**
- * Which cell of the sequencer is being explained, when the control is one.
- *
- * A column is a parameter and a cell is a bit (SPEC.md 6.1, invariant 3), so
- * the address alone does not say what is under the hand: the note is what the
- * column does not carry. Both are counted from 1, as the grid shows them.
- */
-export interface SequencerCell {
-  step: number;
-  note: number;
-  /** Past `cycle length`: the firmware never reaches it (SPEC.md A.6). */
-  outOfCycle: boolean;
-}
 
 /** What the panel calls a step the firmware never reaches (SPEC.md A.6). */
 export const OUT_OF_CYCLE = "out of cycle";
