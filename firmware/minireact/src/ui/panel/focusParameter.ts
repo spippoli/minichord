@@ -22,7 +22,9 @@
 const PARAMETER_ATTRIBUTE = "data-parameter-address";
 
 /** What a control puts on its body so the panel can find it again. */
-export function parameterAnchor(address: number): Record<string, number> {
+export type ParameterAnchor = { readonly [PARAMETER_ATTRIBUTE]: number };
+
+export function parameterAnchor(address: number): ParameterAnchor {
   return { [PARAMETER_ATTRIBUTE]: address };
 }
 

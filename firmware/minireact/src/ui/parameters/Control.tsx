@@ -1,20 +1,33 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FunctionComponent,
+  type KeyboardEvent,
+} from "react";
 
 import {
   defaultWire,
   format,
+  kindOf,
   nudge,
   parse,
-  positionToWire,
-  wireMax,
-  wireMin,
-  wireToPosition,
+  type ControlKind,
   type Parameter,
   type ParameterDescription,
 } from "../../domain";
 import { parameterAnchor } from "../panel/focusParameter";
 import { useReadoutChannel } from "../readout/readoutChannel";
 import styles from "./Control.module.css";
+import {
+  Fader,
+  Menu,
+  Picker,
+  Stepper,
+  Switch,
+  type SlotProps,
+} from "./widgets";
 
 /**
  * One parameter under the hand: the repertoire, and nothing about the store.
@@ -26,17 +39,34 @@ import styles from "./Control.module.css";
  * window, the arrows moving the *value*, double-click to the factory default,
  * hover-or-focus feeding the readout, the tooltip travelling as
  * `aria-describedby`, one tab stop on the body and one focus ring all live
- * here. **The kind chooses the widget in the slot and nothing else**; today
- * there is one kind, the fader, and the rest arrive in the slot marked below.
+ * here. **The kind chooses the widget in the slot and nothing else**, and the
+ * kind is derived from the parameter, never passed in by the caller.
  *
  * It reads no store: the value is a prop, from the binding (invariant 1).
  */
 
-/** The travel is continuous; the wire is not (SPEC.md 4.3). */
-const POSITION_STEP = 0.0001;
-
 /** The arrows move the value by one, and by ten with Shift (SPEC.md 8.2). */
 const COARSE_STEP = 10;
+
+/**
+ * The widget each kind puts in the slot (SPEC.md 8.1).
+ *
+ * The sequencer is deliberately absent: it is not a seventh kind but the
+ * declared exception (SPEC.md 6.1, invariant 3) — a column is a parameter and a
+ * cell is a bit — and it is drawn as one grid rather than as sixteen controls.
+ */
+const SLOT: Readonly<
+  Record<Exclude<ControlKind, "sequencer">, FunctionComponent<SlotProps>>
+> = {
+  slider: Fader,
+  toggle: Switch,
+  select: Menu,
+  stepper: Stepper,
+  picker: Picker,
+};
+
+/** A dropdown takes the readout's column in the plate (SPEC.md 8.2). */
+const DROPDOWN: ReadonlySet<ControlKind> = new Set(["select", "picker"]);
 
 export type ControlProps = {
   parameter: Parameter;
@@ -63,7 +93,10 @@ export function Control({
   const readout = useReadoutChannel();
   const bodyId = useId();
   const descriptionId = useId();
-  const bodyRef = useRef<HTMLInputElement>(null);
+
+  // A callback ref, because the body is a different element per kind and the
+  // one thing this component does with it is give it the focus back.
+  const body = useRef<HTMLElement | null>(null);
 
   /** The draft in the value window, or `null` when the window is read-only. */
   const [draft, setDraft] = useState<string | null>(null);
@@ -74,7 +107,7 @@ export function Control({
   useEffect(() => {
     if (editing || !returnFocus.current) return;
     returnFocus.current = false;
-    bodyRef.current?.focus();
+    body.current?.focus();
   }, [editing]);
 
   /** Undo the window-level pointer watch, whoever ends the drag. */
@@ -106,7 +139,7 @@ export function Control({
     onPointerDown();
   }
 
-  function onBodyKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  function onBodyKeyDown(event: KeyboardEvent) {
     const step = event.shiftKey ? COARSE_STEP : 1;
     const by = {
       ArrowUp: step,
@@ -146,11 +179,25 @@ export function Control({
     closeWindow(event.key === "Enter");
   }
 
+  // Derived, never passed in (SPEC.md 6.1, invariant 2). The rhythm masks are
+  // the grid's, not a control's (SPEC.md 8.3), and the panel does not send them
+  // here; the guard is what keeps that a fact rather than an assumption.
+  const kind = kindOf(parameter);
+  if (kind === "sequencer") return null;
+
+  const Slot = SLOT[kind];
+  // The menu takes the readout's column, since a window repeating the word
+  // already on screen spends a column of a dense panel on nothing. Two cases
+  // take it back: an unequipped slot, which has no choice to read back, and the
+  // moment the window is being typed into (SPEC.md 8.2).
+  const wide = DROPDOWN.has(kind) && !unequipped && !editing;
+
   return (
     // Hover and focus reach the readout through the same channel, and the
     // handlers sit on the row so the value window feeds it too (invariant 4).
     <div
       className={styles.control}
+      data-kind={kind}
       data-unequipped={unequipped || undefined}
       onPointerEnter={() =>
         readout.show("hover", { address: parameter.address })
@@ -169,34 +216,33 @@ export function Control({
         {parameter.address}
       </span>
 
-      {/* The slot. The kind chooses what stands here, and nothing else. */}
-      <input
-        ref={bodyRef}
-        id={bodyId}
-        className={styles.fader}
-        type="range"
-        // How the panel finds this control again (SPEC.md 6.1, invariant 6).
-        {...parameterAnchor(parameter.address)}
-        min={0}
-        max={1}
-        step={POSITION_STEP}
-        value={wireToPosition(parameter, value)}
-        aria-valuenow={value}
-        aria-valuetext={format(parameter, value)}
-        aria-valuemin={wireMin(parameter)}
-        aria-valuemax={wireMax(parameter)}
-        aria-describedby={descriptionId}
-        aria-disabled={unequipped || undefined}
-        onChange={(event) =>
-          change(positionToWire(parameter, event.target.valueAsNumber))
-        }
-        onKeyDown={onBodyKeyDown}
-        onPointerDown={beginDrag}
-        // The other origin the dock does not offer (SPEC.md 8.2).
-        onDoubleClick={() => change(defaultWire(parameter))}
-      />
+      {/* The slot. The kind chooses what stands here, and nothing else: the
+          repertoire below travels to every widget as one object. */}
+      <span className={wide ? styles.slotWide : styles.slot}>
+        <Slot
+          parameter={parameter}
+          value={value}
+          onChange={change}
+          onDragStart={beginDrag}
+          body={{
+            id: bodyId,
+            ref: (node) => {
+              body.current = node;
+            },
+            // How the panel finds this control again (invariant 6).
+            ...parameterAnchor(parameter.address),
+            "aria-describedby": descriptionId,
+            // Never `disabled`: that removes the slot from the tab order, and
+            // delivers its explanation to the mouse only (SPEC.md 12.6).
+            "aria-disabled": unequipped || undefined,
+            onKeyDown: onBodyKeyDown,
+            // The other origin the dock does not offer (SPEC.md 8.2).
+            onDoubleClick: () => change(defaultWire(parameter)),
+          }}
+        />
+      </span>
 
-      {editing ? (
+      {wide ? null : editing ? (
         <ValueWindow
           className={styles.window}
           draft={draft}

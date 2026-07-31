@@ -3,7 +3,7 @@ import { ParameterBinding } from "../parameters/ParameterBinding";
 import styles from "./Panel.module.css";
 
 /**
- * The workbench, at its first size: one section, one kind, a flat list.
+ * The workbench, at its first size: one section, a flat list.
  *
  * The section is picked here in code and the information architecture — the
  * tabs, the plates, the folding and the search of SPEC.md 7.2 — comes with the
@@ -11,15 +11,14 @@ import styles from "./Panel.module.css";
  * is mounted at a time**, which is the assumption the render cost of SPEC.md
  * 7.6 was measured under.
  *
- * Only the faders are drawn: the kind is derived from the parameter (SPEC.md
- * 8.1), and the five other kinds put a different widget in the same slot
- * without touching the repertoire the control already owns.
+ * Every kind is drawn but the sequencer: the rhythm masks are one grid and not
+ * sixteen controls (SPEC.md 8.3), and the grid arrives with its own ticket.
  */
 const SECTION: Section = "global";
 
 const drawn = visibleParameters.filter(
   (parameter) =>
-    parameter.section === SECTION && kindOf(parameter) === "slider",
+    parameter.section === SECTION && kindOf(parameter) !== "sequencer",
 );
 
 export function Panel() {

@@ -15,6 +15,7 @@
  * nothing else.
  */
 
+import { ENUMERATIONS } from "./enumerations";
 import { isRhythmAddress } from "./rhythm";
 import type { Parameter } from "./parameters";
 
@@ -29,12 +30,15 @@ export const PICKER_ADDRESSES: ReadonlySet<number> = new Set([10, 12, 14, 16]);
 
 /**
  * The fourteen addresses whose values have names (SPEC.md 8.6): eleven
- * waveforms, the key signatures, and the two shufflings. The labels themselves
- * are not here — they arrive with the menu.
+ * waveforms, the key signatures, and the two shufflings.
+ *
+ * The rule reads the labels rather than restating their addresses: a menu with
+ * no names is the one thing a `select` cannot be, so the two lists must not be
+ * able to drift apart.
  */
-export const ENUMERATED_ADDRESSES: ReadonlySet<number> = new Set([
-  35, 40, 42, 59, 62, 93, 100, 120, 122, 125, 128, 152, 156, 160,
-]);
+export const ENUMERATED_ADDRESSES: ReadonlySet<number> = new Set(
+  ENUMERATIONS.keys(),
+);
 
 /** The widest range still small enough to step through rather than drag. */
 const STEPPER_SPAN = 16;
