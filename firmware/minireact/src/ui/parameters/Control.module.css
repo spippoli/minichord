@@ -13,10 +13,10 @@
 
 .control {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   grid-template-areas:
-    "name address"
-    "fader window";
+    "name leds address"
+    "fader fader window";
   align-items: center;
   gap: 0.15rem 0.5rem;
   padding: 0.35rem 0.5rem;
@@ -25,6 +25,40 @@
 .name {
   grid-area: name;
   font-size: 0.8rem;
+}
+
+/*
+ * The two state LEDs (SPEC.md 7.3). They keep their place lit or dark: a pair
+ * that appears and disappears moves the address beside it on every edit, and a
+ * dense plate of ten controls would then twitch line by line.
+ */
+.leds {
+  grid-area: leds;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.led {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--led-dark);
+}
+
+.ledEdited {
+  composes: led;
+}
+
+.ledEdited[data-lit] {
+  background: var(--led-edited);
+}
+
+.ledOffDefault {
+  composes: led;
+}
+
+.ledOffDefault[data-lit] {
+  background: var(--led-off-default);
 }
 
 .address {
