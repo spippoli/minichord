@@ -6,9 +6,11 @@
 .strip {
   display: flex;
   align-items: center;
+  gap: 0.6rem;
   min-height: 2.5rem;
   padding: 0 1rem;
-  border-bottom: 1px solid currentColor;
+  border-bottom: 1px solid var(--edge-strong);
+  background: var(--plastic-deep);
 }
 
 .line {
@@ -18,5 +20,23 @@
 
 /* Disconnected is a state to notice, not an alarm to dismiss. */
 .strip[data-status="interrupted"] .line {
-  opacity: 0.75;
+  color: var(--silkscreen-dim);
+}
+
+/*
+ * The bank LED: the one element the bank hue reaches, in the whole app
+ * (SPEC.md 7.4). It is lit through `--tint`, which resolves `--hue` from the
+ * panel root — not the windows, not the lit surfaces, not the moulding, because
+ * the hue is the bank's identity and an identity belongs in one place.
+ *
+ * It is `aria-hidden`: the bank number is already in the line beside it, and a
+ * colour is not something to be read out.
+ */
+.bankLed {
+  flex: none;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 1px solid var(--led-bezel);
+  border-radius: 50%;
+  background: var(--tint);
 }

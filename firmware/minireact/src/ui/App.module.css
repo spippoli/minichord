@@ -1,0 +1,13 @@
+/*
+ * The panel root is a moulded block, not a page with a background: it holds the
+ * whole viewport so that the plastic runs to the edges even when the editor is
+ * short — a gate floating on the browser's own canvas is the one place the
+ * moulding would visibly stop (SPEC.md 7.4).
+ *
+ * Its colour is entirely in `moulding/moulding.css`, keyed on `data-moulding`.
+ * There is no surface declaration here, and that is deliberate.
+ */
+
+.root {
+  min-height: 100svh;
+}

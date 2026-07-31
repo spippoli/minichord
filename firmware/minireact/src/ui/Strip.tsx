@@ -27,6 +27,8 @@ export function Strip() {
 
   return (
     <header className={styles.strip} data-status={connection.status}>
+      {/* The bank LED: the only element the bank hue reaches (SPEC.md 7.4). */}
+      {values && <span className={styles.bankLed} aria-hidden="true" />}
       <p className={styles.line}>{line}</p>
     </header>
   );

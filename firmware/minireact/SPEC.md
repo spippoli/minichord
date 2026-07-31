@@ -958,12 +958,15 @@ reading as state.
 
 `--hue` is set inline on the panel root from the live value of address 20.
 
-> **Open:** the concrete colour values behind the ~110 tokens. The token _names_ and their roles are
-> fixed by this section and §8; the hex values are not, and this document does not carry a palette.
-> What constrains them anyway: two complete sets with nothing shared, a positive LCD in the light
-> moulding, and the focus ring drawn in the LCD's own ink and legible against plastic in both
-> (§12.7). Nobody will review the values you choose.
-> ([reasoning](https://github.com/spippoli/minichord/issues/16))
+The concrete colour values were this document's one deliberate opening, and they are now cast: the
+two sets live in `src/ui/moulding/moulding.css`, 56 tokens each, keyed on a `data-moulding`
+attribute the root wears. This document still carries no palette — the values are the stylesheet's,
+not the specification's, and changing one is not a change to anything written here. What is fixed
+is what constrained them: two complete sets with nothing shared, a positive LCD in the light
+moulding, and the focus ring drawn in the LCD's own ink (§12.7). Those three, and the swaps of the
+LED, the window and the cap, are asserted by `moulding/tokens.test.ts` against the stylesheet as
+text, which is the only place a claim about CSS can be checked from a test with no DOM.
+([reasoning](https://github.com/spippoli/minichord/issues/16))
 
 ### 7.5 The narrow floor
 
@@ -1689,9 +1692,9 @@ _Decided in: [Decide keyboard navigation and accessibility across the panel](htt
 The complete index of `**Open:**` markers. Nothing else in this document is deliberately
 unspecified above the altitude declared in §0.
 
-| what is free                                              | where |
-| --------------------------------------------------------- | ----- |
-| the concrete colour values behind the panel's ~110 tokens | §7.4  |
+**There are none left.** The one that stood here — the concrete colour values behind the panel's
+tokens — was cast in §7.4, and the values live in the stylesheet rather than in this document.
+A future opening belongs in this table on the day it is written down.
 
 ### 13.2 Out of scope
 

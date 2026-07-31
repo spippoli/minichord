@@ -1,8 +1,8 @@
 /*
  * The gate is a whole screen and the only thing on it, so it centres one card.
- * Deliberately plain: the panel's visual language — the two mouldings and the
- * bank hue — is a later ticket, and nothing here should have to be undone when
- * it lands.
+ * It stands on the panel root and is cast in the same moulding (SPEC.md 7.4):
+ * the plastic and the silkscreen are inherited, and what is named here is only
+ * what a plain surface cannot inherit — the keys and the printed hierarchy.
  */
 
 .gate {
@@ -21,16 +21,16 @@
   margin: 0 0 0.75rem;
   font-size: 1.35rem;
   font-weight: 600;
+  color: var(--silkscreen-heading);
 }
 
 .body {
   margin: 0;
-  opacity: 0.85;
 }
 
 .note {
   margin: 1rem 0 0;
-  opacity: 0.85;
+  color: var(--silkscreen-dim);
 }
 
 .picker {
@@ -52,7 +52,7 @@
 .label {
   flex-basis: 100%;
   font-size: 0.85rem;
-  opacity: 0.85;
+  color: var(--silkscreen-dim);
 }
 
 .ports {
@@ -65,30 +65,39 @@
   list-style: none;
 }
 
-.action,
-.select {
+.action {
   font: inherit;
   padding: 0.4rem 0.9rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
   border-radius: 0.25rem;
-  background: transparent;
-  color: inherit;
-}
-
-.action {
+  background: var(--key);
+  color: var(--key-ink);
   cursor: pointer;
 }
 
-.action:disabled {
-  cursor: default;
-  opacity: 0.5;
+.select {
+  font: inherit;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--menu-edge);
+  border-radius: 0.25rem;
+  background: var(--menu);
+  color: var(--menu-ink);
 }
 
-.action:focus-visible,
-.select:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+.action:disabled {
+  border-color: var(--edge-plate);
+  background: var(--plastic-dead);
+  color: var(--silkscreen-dead);
+  cursor: default;
 }
+
+/*
+ * No focus rule here. There is exactly one ring in the app, in `index.css`,
+ * drawn in the LCD's own ink (SPEC.md 12.7) — the pair that used to sit here,
+ * in `currentColor`, is how a ring comes to exist on some controls and not
+ * others.
+ */
 
 /* The lone Connect button of `idle`, which has no group to sit in. */
 .card > .action {
