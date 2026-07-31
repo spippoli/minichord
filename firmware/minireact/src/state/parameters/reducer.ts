@@ -26,11 +26,26 @@ export type ParametersState = {
    * pointer" becomes 189 pieces of local state (SPEC.md 6.1, invariant 1).
    */
   readonly held: number | null;
+  /**
+   * The last state known to have been **loaded** — what "edited" is measured
+   * against (SPEC.md 10.3), or `null` before the first dump.
+   *
+   * A dump never says where it came from, and the two species carry opposite
+   * meanings: the one closing `load_config` *is* the flash file, while the one
+   * answering `(0, 0)` is live state with unsaved edits included. They are told
+   * apart by what caused them, never by inspecting them, so the reference is
+   * captured on exactly three events: the session's first dump, a dump whose
+   * bank id differs from the store's, and a dump following a save or a reset we
+   * issued. **The third is not here yet** — it needs the flag a save raises,
+   * which arrives with the banks; the first two need nothing but this slice.
+   */
+  readonly stored: readonly number[] | null;
 };
 
 export const initialParametersState: ParametersState = {
   values: null,
   held: null,
+  stored: null,
 };
 
 /**
@@ -62,6 +77,31 @@ export const NEUTRALISED: ReadonlyMap<number, number> = new Map([
   [5, 512],
   [6, 512],
 ]);
+
+/**
+ * The slots no comparison against the stored bank may look at (SPEC.md 7.3).
+ *
+ * The five of SPEC.md 5.4 hold a fiction the store forces, so they never differ
+ * and would never be edited; the firmware version is healed by the device on
+ * every write. Comparing any of them says nothing about what a human changed.
+ */
+const OUTSIDE_COMPARISON: ReadonlySet<number> = new Set([
+  ...NEUTRALISED.keys(),
+  FIRMWARE_VERSION_ADDRESS,
+]);
+
+/**
+ * Whether this address now differs from the bank as it was loaded — the amber
+ * LED of SPEC.md 7.3, and the plate's edited count.
+ *
+ * With no reference yet nothing is edited: before the first dump there is no
+ * state at all, and a value cannot differ from nothing.
+ */
+export function isEdited(state: ParametersState, address: number): boolean {
+  if (!state.values || !state.stored) return false;
+  if (OUTSIDE_COMPARISON.has(address)) return false;
+  return state.values[address] !== state.stored[address];
+}
 
 /**
  * Every dump, solicited or not, replaces every value — then the five slots of
@@ -108,14 +148,17 @@ export function parametersReducer(
   status: ConnectionStatus,
 ): { state: ParametersState; effects: Effect[] } {
   switch (event.type) {
-    case "dump":
+    case "dump": {
+      const values = protectHeld(state, neutralise(event.values));
+      const loaded =
+        state.values === null ||
+        state.values[BANK_ADDRESS] !== values[BANK_ADDRESS];
+
       return {
-        state: {
-          ...state,
-          values: protectHeld(state, neutralise(event.values)),
-        },
+        state: { ...state, values, stored: loaded ? values : state.stored },
         effects: [],
       };
+    }
 
     case "edit": {
       if (status !== "connected" || !state.values) {

@@ -3,18 +3,148 @@
  * compared side by side, not stacked in one column.
  *
  * The narrow floor is declared rather than degraded into: 760 px still holds
- * two columns, and below `min-width` the panel scrolls sideways (SPEC.md 7.5).
- * The plates that will carry this flow arrive with the information
- * architecture.
+ * two columns of plates, and below `min-width` the panel scrolls sideways —
+ * unsupported on purpose, not broken by accident (SPEC.md 7.5). 744 px is
+ * 760 minus a vertical scrollbar.
+ *
+ * The moulding — the two token sets, the milled edges, the caps — arrives with
+ * its own ticket (SPEC.md 7.4). What is here is the geometry.
  */
 
 .panel {
+  /* The floor is the whole panel, padding included: 744 px is the number the
+     window is measured against, not the number plus two margins. */
+  box-sizing: border-box;
   min-width: 744px;
   padding: 1rem;
 }
 
+/* The tabs, the search box and the fold controls, on one line. */
+.chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid currentColor;
+  font: inherit;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tab[aria-selected="true"] {
+  font-weight: 600;
+}
+
+/* The count itself is the LED; `{n} matches` is the title (SPEC.md A.6). */
+.tabMatches {
+  padding: 0 0.35rem;
+  border-radius: 0.6rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  background: currentColor;
+  color: canvas;
+}
+
+/* The search box gives way first, so the chrome line holds at the floor. */
+.search {
+  display: flex;
+  flex: 1 1 10rem;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.search input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid currentColor;
+  font: inherit;
+  background: none;
+  color: inherit;
+}
+
+.folds {
+  display: flex;
+  gap: 0.25rem;
+  margin-inline-start: auto;
+}
+
+.folds button {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid currentColor;
+  font: inherit;
+  font-size: 0.85rem;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+/*
+ * A packed multi-column flow: plates differ in height, and a grid would leave
+ * the difference as a hole. 20rem columns keep two of them at the narrow floor.
+ */
 .flow {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 0.25rem 1.5rem;
+  columns: 20rem;
+  column-gap: 1.5rem;
+}
+
+.plate {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: 1rem;
+  border: 1px solid currentColor;
+  /* A plate is one object: it is never split across two columns. */
+  break-inside: avoid;
+}
+
+.plateHeading {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.plateHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  border: 0;
+  border-bottom: 1px solid currentColor;
+  font: inherit;
+  text-align: start;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.plateName {
+  font-weight: 600;
+}
+
+/* Folding hides noise, never state (SPEC.md 7.2). */
+.plateEdited {
+  margin-inline-start: auto;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.plateBody {
+  padding: 0.25rem 0;
 }

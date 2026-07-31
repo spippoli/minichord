@@ -7,6 +7,7 @@ import type { AppEvent } from "../events";
 import {
   NEUTRALISED,
   firmwareVersion,
+  isEdited,
   initialParametersState,
   parametersReducer,
   type ParametersState,
@@ -216,5 +217,74 @@ describe("the address under an active pointer (SPEC.md 5.3)", () => {
     expect(
       apply({ type: "pointer-up" }, "connected", state).state.held,
     ).toBeNull();
+  });
+});
+
+describe("the reference the edited count compares against (SPEC.md 10.3)", () => {
+  it("captures the session's first dump", () => {
+    const state = dumped();
+
+    expect(state.stored).toEqual(state.values);
+    expect(isEdited(state, 40)).toBe(false);
+  });
+
+  it("counts an edit as edited, and only against the reference", () => {
+    const state = apply(
+      { type: "edit", address: 40, value: 999 },
+      "connected",
+      dumped(),
+    ).state;
+
+    expect(isEdited(state, 40)).toBe(true);
+    expect(isEdited(state, 41)).toBe(false);
+  });
+
+  it("leaves the reference alone on a dump that only answers our own probe", () => {
+    const edited = apply(
+      { type: "edit", address: 40, value: 999 },
+      "connected",
+      dumped(),
+    ).state;
+    const values = identityDump();
+    values[40] = 999;
+
+    const after = apply({ type: "dump", values }, "connected", edited).state;
+
+    // Live state with an unsaved edit in it. Baselining here would silently
+    // declare everything saved on every connection probe and every retry.
+    expect(isEdited(after, 40)).toBe(true);
+  });
+
+  it("captures a new reference when the dump carries another bank", () => {
+    const edited = apply(
+      { type: "edit", address: 40, value: 999 },
+      "connected",
+      dumped(),
+    ).state;
+    const values = identityDump();
+    values[BANK_ADDRESS] = 4;
+
+    const after = apply({ type: "dump", values }, "connected", edited).state;
+
+    expect(after.stored?.[BANK_ADDRESS]).toBe(4);
+    expect(isEdited(after, 40)).toBe(false);
+  });
+
+  it("never compares the five fictions or the firmware version", () => {
+    const state = dumped();
+    const drifted = {
+      ...state,
+      values: state.values!.map((value, address) =>
+        address === 7 || NEUTRALISED.has(address) ? value + 1 : value,
+      ),
+    };
+
+    for (const address of [...NEUTRALISED.keys(), 7]) {
+      expect(isEdited(drifted, address)).toBe(false);
+    }
+  });
+
+  it("has nothing edited before the first dump", () => {
+    expect(isEdited(initialParametersState, 40)).toBe(false);
   });
 });
