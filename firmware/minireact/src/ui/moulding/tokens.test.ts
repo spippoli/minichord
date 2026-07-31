@@ -205,7 +205,13 @@ describe("the focus ring", () => {
 
   it("is never redeclared, so no control falls back to the system blue", () => {
     for (const path of sources(".css")) {
-      expect(read(path), path).not.toMatch(/:focus/);
+      // The ring itself: drawn once, globally, and nowhere else.
+      expect(read(path), path).not.toMatch(/outline/);
+      // And `:focus-visible` throughout, never bare `:focus`, or a window lights
+      // up under the mouse. A module may still key layout off the focus — the
+      // skip link leaves its clipped state that way — as long as it leaves the
+      // ring alone, which the assertion above is what enforces.
+      expect(read(path), path).not.toMatch(/:focus(?!-visible)/);
     }
   });
 });

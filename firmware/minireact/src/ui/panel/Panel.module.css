@@ -239,7 +239,9 @@
 .dock {
   margin-top: 1rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--edge-plate);
+  border-top-color: var(--edge-light);
+  background: var(--plastic-plate);
 }
 
 .dockChrome {
@@ -295,13 +297,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Revert is a key, like every other thing on the panel you press. */
 .dockAction {
   padding: 0 0.4rem;
-  border: 1px solid currentColor;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
   font: inherit;
   font-size: 0.8rem;
-  background: none;
-  color: inherit;
+  background: var(--key);
+  color: var(--key-ink);
   cursor: pointer;
 }
 
