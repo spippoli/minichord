@@ -21,10 +21,18 @@ export {
   visibleParameters,
 } from "./parameters";
 
+export type { ControlKind } from "./kind";
+export { kindOf } from "./kind";
+
+export type { ParameterCondition, ParameterDescription } from "./description";
+export { RESTING_LINE, describeParameter } from "./description";
+
 export {
   FLOAT_DECIMALS,
   FLOAT_MULTIPLIER,
+  defaultWire,
   format,
+  nudge,
   parse,
   positionToWire,
   wireMax,

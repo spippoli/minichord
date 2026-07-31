@@ -1,0 +1,75 @@
+/*
+ * One control: name, address, the slot, the value window.
+ *
+ * The panel is not moulded yet (SPEC.md 7.4) — the two token sets, the milled
+ * edges and the caps arrive with the moulding. What is here is the geometry the
+ * repertoire needs, plus the one thing that must not wait: nothing declares its
+ * own focus ring. There is exactly one, in `index.css`, and it is the reason
+ * this file has no `:focus` rule at all (SPEC.md 12.7).
+ */
+
+.control {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "name address"
+    "fader window";
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.name {
+  grid-area: name;
+  font-size: 0.8rem;
+}
+
+.address {
+  grid-area: address;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+
+.fader {
+  grid-area: fader;
+  width: 100%;
+  min-width: 6rem;
+  margin: 0;
+}
+
+/*
+ * The read-only window and the typed one are the same box, so the row does not
+ * move when the field appears under `Enter`.
+ */
+.window {
+  grid-area: window;
+  min-width: 4.5rem;
+  padding: 0.1rem 0.25rem;
+  border: 1px solid currentColor;
+  font: inherit;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  background: none;
+  color: inherit;
+}
+
+/* An unequipped slot keeps its place; the cap is dead, not the row dimmed. */
+.control[data-unequipped] .fader {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+/* Announced, never shown: the sentence `aria-describedby` points at. */
+.offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

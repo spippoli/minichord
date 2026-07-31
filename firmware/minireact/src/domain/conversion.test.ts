@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  defaultWire,
   format,
+  nudge,
   parse,
   positionToWire,
   wireMax,
@@ -202,5 +204,39 @@ describe("parse", () => {
     expect(parse(linearInt, "12ms")).toBeNull();
     expect(parse(linearInt, "1,2,3")).toBeNull();
     expect(parse(linearInt, "0")).toBe(0);
+  });
+});
+
+describe("nudging by value, not by position (SPEC.md 8.2)", () => {
+  it("moves the wire value by the given step", () => {
+    expect(nudge(linearInt, 40, 1)).toBe(41);
+    expect(nudge(linearInt, 40, -10)).toBe(30);
+  });
+
+  it("stops at the wire bounds rather than wrapping", () => {
+    expect(nudge(linearInt, 355, 10)).toBe(360);
+    expect(nudge(linearInt, 4, -10)).toBe(0);
+    // The exponential floor is 1, not the declared minimum.
+    expect(nudge(exponential, 3, -10)).toBe(1);
+    expect(nudge(exponential, 4995, 10)).toBe(5000);
+  });
+
+  it("reaches the values the position cannot (SPEC.md 4.3)", () => {
+    // Near the top of a 0..5000 exponential the travel jumps by nine; the
+    // arrows are the only way to 4993.
+    expect(nudge(exponential, 4992, 1)).toBe(4993);
+  });
+});
+
+describe("the factory default (SPEC.md 8.2, 8.4)", () => {
+  it("is the declared default, on the wire", () => {
+    expect(defaultWire(linearInt)).toBe(linearInt.defaultValue);
+    expect(defaultWire(linearFloat)).toBe(50);
+  });
+
+  it("leaves a picker's out-of-range default alone", () => {
+    const picker = parameterAt(10);
+    expect(picker.min).toBe(21);
+    expect(defaultWire(picker)).toBe(0);
   });
 });

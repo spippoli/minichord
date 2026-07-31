@@ -122,6 +122,35 @@ export function wireToPosition(parameter: Parameter, wire: number): number {
   return CURVES[parameter.curve].wireToPosition(wire, wireRange(parameter));
 }
 
+/**
+ * The factory default, on the wire — what a double-click returns to.
+ *
+ * `default_value` is declared in the parameter's own units, so a float's 0.5
+ * is 50 on the wire. It is deliberately **not clamped**: the four pickers
+ * default to 0, outside their own declared minimum of 21 (SPEC.md 8.4), and
+ * clamping it into range would invent a target they do not point at.
+ */
+export function defaultWire(parameter: Parameter): number {
+  return SCALES[parameter.dataType].toWire(parameter.defaultValue);
+}
+
+/**
+ * Move a wire value by a whole step, clamped into `wireMin..wireMax`.
+ *
+ * This is what the arrow keys do, and they deliberately move the **value** and
+ * not the position (SPEC.md 8.2): near the top of a 0..5000 exponential one
+ * step of travel is nine wire values, and the arrows are the only way to the
+ * ones in between.
+ */
+export function nudge(
+  parameter: Parameter,
+  wire: number,
+  step: number,
+): number {
+  const { low, high } = wireRange(parameter);
+  return clamp(Math.round(wire) + step, low, high);
+}
+
 /** The wire value as the user reads it: floats divided by 100, to two decimals. */
 export function format(parameter: Parameter, wire: number): string {
   return SCALES[parameter.dataType].format(wire);

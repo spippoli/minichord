@@ -308,11 +308,16 @@ export class MinichordTransport {
    *
    * A port that has gone away is an ordinary runtime state, not a programming
    * error, so it is a `false` rather than a throw (SPEC.md 3.4, 9.4).
+   *
+   * The timestamp is 0 — send now — on every message, and stated rather than
+   * left to the default: Web MIDI's scheduling is unusable in Chromium, where
+   * `clear()` was never implemented, so a message scheduled for later cannot be
+   * called back (SPEC.md 5.7).
    */
   private write(output: MIDIOutput, bytes: Uint8Array): boolean {
     if (output.state !== "connected") return false;
     try {
-      output.send(bytes);
+      output.send(bytes, 0);
       return true;
     } catch {
       return false;

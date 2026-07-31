@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import { BANK_ADDRESS } from "../../domain";
 import { PARAMETER_COUNT } from "../../transport";
 import type { ConnectionStatus } from "../connection/reducer";
 import type { AppEvent } from "../events";
 import {
   NEUTRALISED,
+  firmwareVersion,
   initialParametersState,
   parametersReducer,
   type ParametersState,
@@ -96,6 +98,12 @@ describe("the neutralisation (SPEC.md 5.4)", () => {
 
   it("leaves the firmware version alone", () => {
     expect(dumped().values?.[7]).toBe(7);
+    expect(firmwareVersion(dumped())).toBe(7);
+  });
+
+  it("reads the firmware as 0 with no store behind it", () => {
+    // Before the first dump every parameter is newer than what is connected.
+    expect(firmwareVersion(initialParametersState)).toBe(0);
   });
 });
 
@@ -121,5 +129,92 @@ describe("the store is optimistic, and subordinate (SPEC.md 5.2)", () => {
     // that, not the authority for it.
     expect(state).toBe(before);
     expect(effects).toEqual([]);
+  });
+});
+
+describe("the address under an active pointer (SPEC.md 5.3)", () => {
+  /** A dump of the same bank, with every value moved by one. */
+  function movedDump(bank = 0): number[] {
+    const values = identityDump().map((value) => value + 1);
+    values[BANK_ADDRESS] = bank;
+    return values;
+  }
+
+  function holding(address: number): ParametersState {
+    const base = identityDump();
+    base[BANK_ADDRESS] = 0;
+    const held = apply(
+      { type: "pointer-down", address },
+      "connected",
+      dumped(base),
+    );
+    return apply({ type: "edit", address, value: 777 }, "connected", held.state)
+      .state;
+  }
+
+  it("survives a dump: a slider never jumps out from under the cursor", () => {
+    const state = holding(40);
+    const after = apply(
+      { type: "dump", values: movedDump() },
+      "connected",
+      state,
+    ).state;
+
+    expect(after.values?.[40]).toBe(777);
+    // Every other value is the device's again.
+    expect(after.values?.[41]).toBe(42);
+  });
+
+  it("loses the exception when the pointer comes up", () => {
+    const state = apply({ type: "pointer-up" }, "connected", holding(40)).state;
+    const after = apply(
+      { type: "dump", values: movedDump() },
+      "connected",
+      state,
+    ).state;
+
+    expect(after.values?.[40]).toBe(41);
+  });
+
+  it("flushes the last value of the drag on pointer-up", () => {
+    // The final position of a drag is never the one coalescing threw away.
+    const { effects } = apply({ type: "pointer-up" }, "connected", holding(40));
+    expect(effects).toEqual([{ type: "flush-writes" }]);
+  });
+
+  it("asks for nothing when no pointer was down", () => {
+    const before = dumped();
+    const { state, effects } = apply(
+      { type: "pointer-up" },
+      "connected",
+      before,
+    );
+    expect(state).toBe(before);
+    expect(effects).toEqual([]);
+  });
+
+  it("loses the exception too when the dump carries another bank", () => {
+    // The value under the finger belonged to the previous bank; keeping it
+    // would display a number that belongs to nothing.
+    const state = holding(40);
+    const after = apply(
+      { type: "dump", values: movedDump(3) },
+      "connected",
+      state,
+    ).state;
+
+    expect(after.values?.[40]).toBe(41);
+    expect(after.values?.[BANK_ADDRESS]).toBe(3);
+  });
+
+  it("holds one address at a time and forgets it with the values", () => {
+    const state = apply(
+      { type: "pointer-down", address: 40 },
+      "connected",
+      dumped(),
+    ).state;
+    expect(
+      apply({ type: "pointer-up" }, "connected", state).state.held,
+    ).toBeNull();
   });
 });

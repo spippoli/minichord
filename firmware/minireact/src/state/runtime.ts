@@ -29,6 +29,14 @@ export type RuntimeTransport = {
   onPortsChanged(listener: () => void): Unsubscribe;
 };
 
+/**
+ * Ask for the next frame, and hand back the way to call it off.
+ *
+ * Injected so the write policy can be driven a frame at a time in a test, where
+ * there is no `requestAnimationFrame` and no vsync to wait for.
+ */
+export type FrameScheduler = (flush: () => void) => () => void;
+
 export type RuntimeOptions = {
   /**
    * Whether this platform has a Web MIDI API at all. Defaults to asking
@@ -39,10 +47,25 @@ export type RuntimeOptions = {
   probeTimeoutMs?: number;
   /** How long a dump request waits before the retry of SPEC.md 5.9. */
   dumpRetryMs?: number;
+  /** The animation frame the write policy flushes on (SPEC.md 5.7). */
+  scheduleFlush?: FrameScheduler;
 };
 
 const PROBE_TIMEOUT_MS = 1000;
 const DUMP_RETRY_MS = 1000;
+
+const scheduleOnFrame: FrameScheduler = (flush) => {
+  if (typeof requestAnimationFrame === "function") {
+    const handle = requestAnimationFrame(() => flush());
+    return () => {
+      cancelAnimationFrame(handle);
+    };
+  }
+  const timer = setTimeout(flush, 0);
+  return () => {
+    clearTimeout(timer);
+  };
+};
 
 /**
  * The engine: dispatch, execute, notify.
@@ -62,11 +85,15 @@ export class Runtime {
   private readonly supported: boolean;
   private readonly probeTimeoutMs: number;
   private readonly dumpRetryMs: number;
+  private readonly scheduleFlush: FrameScheduler;
 
   private state: AppState = initialAppState;
   private readonly listeners = new Set<() => void>();
   private readonly subscriptions: Unsubscribe[] = [];
   private dumpRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** At most one value per address, waiting for the frame (SPEC.md 5.7). */
+  private readonly pendingWrites = new Map<number, number>();
+  private cancelFlush: (() => void) | null = null;
   private started = false;
   private disposed = false;
 
@@ -75,6 +102,7 @@ export class Runtime {
     this.supported = options.supported ?? MinichordTransport.isSupported();
     this.probeTimeoutMs = options.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
     this.dumpRetryMs = options.dumpRetryMs ?? DUMP_RETRY_MS;
+    this.scheduleFlush = options.scheduleFlush ?? scheduleOnFrame;
   }
 
   /** Wire up to the transport and decide what the gate shows. Idempotent. */
@@ -111,6 +139,8 @@ export class Runtime {
   dispose(): void {
     this.disposed = true;
     this.cancelDumpRetry();
+    this.cancelPendingFlush();
+    this.pendingWrites.clear();
     for (const unsubscribe of this.subscriptions.splice(0)) unsubscribe();
     this.listeners.clear();
   }
@@ -135,6 +165,19 @@ export class Runtime {
   /** One control moved: one address, one raw wire value. */
   setParameter(address: number, rawValue: number): void {
     this.dispatch({ type: "edit", address, value: rawValue });
+  }
+
+  /**
+   * A pointer went down on a control. Until it comes up, that address is the
+   * one thing a dump may not overrule (SPEC.md 5.3).
+   */
+  pointerDown(address: number): void {
+    this.dispatch({ type: "pointer-down", address });
+  }
+
+  /** The pointer came up: the exception ends and the wire is flushed. */
+  pointerUp(): void {
+    this.dispatch({ type: "pointer-up" });
   }
 
   // -- internals -----------------------------------------------------------
@@ -224,12 +267,46 @@ export class Runtime {
         return;
 
       case "write":
-        // Straight onto the wire, for now. The write policy of SPEC.md 5.7 —
-        // one pending value per address, flushed once per animation frame,
-        // with a final flush on pointer-up — belongs to the first control that
-        // can produce a drag, and lands here without the reducer changing.
-        this.transport.sendParameter(effect.address, effect.value);
+        this.pendingWrites.set(effect.address, effect.value);
+        if (!this.cancelFlush) {
+          this.cancelFlush = this.scheduleFlush(() => {
+            this.cancelFlush = null;
+            this.flushWrites();
+          });
+        }
+        return;
+
+      case "flush-writes":
+        this.cancelPendingFlush();
+        this.flushWrites();
     }
+  }
+
+  /**
+   * The write policy of SPEC.md 5.7, in one place.
+   *
+   * Coalescing is what does the work: one address at 60 Hz is 3.5% of the
+   * measured ceiling, while an uncoalesced 1000 Hz mouse on a single slider
+   * would sit at 58% of it with nothing left for a second control. Pacing was
+   * not adopted — 254 messages at zero interval lost nothing.
+   *
+   * The `timestamp` is the transport's business and is always 0: Web MIDI's
+   * scheduling is unusable in Chromium, where `clear()` was never implemented,
+   * so a scheduled message cannot be called back.
+   */
+  private flushWrites(): void {
+    if (this.pendingWrites.size === 0) return;
+    const pending = [...this.pendingWrites];
+    this.pendingWrites.clear();
+    for (const [address, value] of pending) {
+      this.transport.sendParameter(address, value);
+    }
+  }
+
+  private cancelPendingFlush(): void {
+    if (!this.cancelFlush) return;
+    this.cancelFlush();
+    this.cancelFlush = null;
   }
 
   /**

@@ -1,0 +1,45 @@
+/*
+ * The LCD: one fixed place where the panel explains what is under the hand.
+ *
+ * It reserves its height rather than growing into it. Tooltips run to 318
+ * characters (median 37), and a strip that resized would move the controls
+ * being compared every time the pointer crossed one (SPEC.md 8.2).
+ *
+ * The colours are the panel's, and the panel is not moulded yet (SPEC.md 7.4):
+ * these are placeholders under the token names the moulding will fill.
+ */
+
+.readout {
+  min-height: 4.25rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid currentColor;
+  font-size: 0.85rem;
+}
+
+.readout p {
+  margin: 0;
+}
+
+.where {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  opacity: 0.7;
+}
+
+/* The tooltip and the note read as one paragraph: the note is appended to the
+ * tooltip, not stacked under it (SPEC.md A.4). */
+.what {
+  max-width: 70ch;
+}
+
+.note {
+  opacity: 0.7;
+}
+
+.unequipped {
+  font-weight: 600;
+}
+
+.resting {
+  opacity: 0.6;
+}
