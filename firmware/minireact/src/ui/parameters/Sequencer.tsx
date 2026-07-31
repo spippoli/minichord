@@ -13,6 +13,7 @@ import {
 } from "../../domain";
 import { parameterAnchor } from "../panel/focusParameter";
 import { useReadoutChannel } from "../readout/readoutChannel";
+import { ControlDescription } from "./ControlDescription";
 import styles from "./Sequencer.module.css";
 import {
   FIRST_CELL,
@@ -204,17 +205,11 @@ export function Sequencer({
                   onPointerLeave={() => readout.clear("hover")}
                 />
 
-                {/* The sentence the reader hears, from the single producer, and
-                    itself `aria-hidden`: Chromium computes the description from
-                    hidden text, and without this the sentence is *also* read as
-                    loose text inside the plate (SPEC.md 12.5). */}
-                <span
+                {/* The sentence the reader hears, from the single producer. */}
+                <ControlDescription
                   id={`${cellId(step, note)}-description`}
-                  className={styles.offscreen}
-                  aria-hidden="true"
-                >
-                  {description.sentence}
-                </span>
+                  sentence={description.sentence}
+                />
               </span>
             );
           })}
