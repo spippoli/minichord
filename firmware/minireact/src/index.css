@@ -44,6 +44,16 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * One exception, and it is the token's own offset that moves, never the ring:
+ * a sequencer cell is a 12 px square, and a 2 px ring drawn outside it invades
+ * its neighbours (SPEC.md 12.7). The cell says it is one by carrying the step
+ * it stands for, which is what the grid's arrows already navigate by.
+ */
+[role="checkbox"][data-step]:focus-visible {
+  outline-offset: -2px;
+}
+
 #root {
   min-height: 100svh;
 }
