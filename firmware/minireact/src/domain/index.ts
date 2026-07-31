@@ -8,6 +8,7 @@
 
 export {
   BANK_ADDRESS,
+  BANK_COLOR_ADDRESS,
   FIRMWARE_VERSION_ADDRESS,
   bankNumber,
 } from "./addresses";
@@ -23,6 +24,13 @@ export {
 
 export type { ControlKind } from "./kind";
 export { kindOf } from "./kind";
+
+export { labelsOf } from "./enumerations";
+export {
+  PICKER_RESTING_VALUE,
+  pickerTargets,
+  stepPickerTarget,
+} from "./pickerTargets";
 
 export type { ParameterCondition, ParameterDescription } from "./description";
 export { RESTING_LINE, describeParameter } from "./description";

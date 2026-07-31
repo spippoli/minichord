@@ -12,6 +12,15 @@
 export const BANK_ADDRESS = 1;
 
 /**
+ * The bank's hue, 0..360 — the one parameter whose value *is* a colour.
+ *
+ * It is named here because two places outside the panel need it: the fader
+ * draws the spectrum in its own slot (SPEC.md 8.5), and the strip is the single
+ * element the hue reaches (SPEC.md 7.4).
+ */
+export const BANK_COLOR_ADDRESS = 20;
+
+/**
  * The firmware version, an integer counter — 8 at the time of writing.
  *
  * The firmware heals this slot on every write (SPEC.md 1.5), so it is excluded

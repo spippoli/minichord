@@ -15,6 +15,12 @@ import { matchesQuery, plateKey, platesOf, sectionMatchCount } from "./plates";
  * virtualised and no control is memoised: the worst case this design allows
  * costs React 2.5 ms median against a 16 ms frame.
  *
+ * A plate draws every parameter it holds and asks after none of their kinds:
+ * the kind is derived from the parameter (SPEC.md 8.1) and the control puts the
+ * right widget in the slot. The rhythm masks are the one thing that draws
+ * nothing here — the control declines them, because they are one grid and not
+ * sixteen controls (SPEC.md 8.3), and that grid arrives with its own ticket.
+ *
  * Search is scoped to the section on screen, and that is only admissible
  * because **the tab of every other section lights with its own match count**,
  * so a hit elsewhere is never invisible. **While a search is running, folding
