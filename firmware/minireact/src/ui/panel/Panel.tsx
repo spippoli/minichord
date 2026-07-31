@@ -42,15 +42,28 @@ export function Panel() {
    * The whole of `focusParameter`'s "switch section, unfold the plate" — the
    * behaviour it carries behind a signature of one argument (SPEC.md 6.1,
    * invariant 6). Its callers learn none of it.
+   *
+   * A running search is the third way a control can be off screen, and it is
+   * the panel's own state exactly as the fold is: a query the target does not
+   * match is dropped, or the DOM query after the commit finds nothing and the
+   * focus silently stays where it was — the failure the invariant is worded
+   * against. A query it *does* match is left alone, so `Ctrl+K` then `Tab` does
+   * not empty the box the user has just typed into.
    */
   useEffect(
     () =>
       setParameterReveal((address) => {
         const parameter = byAddress.get(address);
         if (!parameter) return;
+
         setSection(parameter.section);
+        setQuery((current) =>
+          current.trim() === "" || matchesQuery(parameter, current)
+            ? current
+            : "",
+        );
         setFolded((current) => {
-          const key = `${parameter.section}/${parameter.group}`;
+          const key = plateKey(parameter);
           if (!current.has(key)) return current;
           const next = new Set(current);
           next.delete(key);
@@ -85,8 +98,21 @@ export function Panel() {
     ? visible.flatMap((each) => each.parameters)[0]
     : undefined;
 
+  /**
+   * `Fold all` / `Open all` act on the current section (SPEC.md 7.2) — which is
+   * why the fold state is keyed by section and group, and why opening this
+   * section subtracts its own keys rather than emptying the set: the two
+   * sections not on screen keep the shape the user left them in.
+   */
   function foldAll(fold: boolean) {
-    setFolded(fold ? new Set(plates.map(plateKey)) : new Set<string>());
+    setFolded((current) => {
+      const next = new Set(current);
+      for (const plate of plates) {
+        if (fold) next.add(plateKey(plate));
+        else next.delete(plateKey(plate));
+      }
+      return next;
+    });
   }
 
   function toggleFold(key: string) {
@@ -147,6 +173,7 @@ export function Panel() {
                 data-section={tab.section}
                 className={styles.tab}
                 aria-selected={tab.section === section}
+                aria-controls={`${tabId}-panel`}
                 tabIndex={tab.section === section ? 0 : -1}
                 title={matches > 0 ? `${matches} matches` : undefined}
                 onClick={() => setSection(tab.section)}
@@ -184,6 +211,7 @@ export function Panel() {
       </div>
 
       <div
+        id={`${tabId}-panel`}
         className={styles.flow}
         role="tabpanel"
         aria-labelledby={`${tabId}-${section}`}
@@ -200,7 +228,7 @@ export function Panel() {
               // Folding is ignored while a search is running (SPEC.md 7.3).
               folded={!searching && folded.has(plateKey(plate))}
               onFold={() => toggleFold(plateKey(plate))}
-              parameters={parameters}
+              matching={parameters}
             />
           );
         })}

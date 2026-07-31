@@ -12,6 +12,11 @@
  * is made while the control is **not yet mounted**, which is what rules out a
  * registry keyed on mount.
  *
+ * Exactly one panel is mounted at a time (SPEC.md 9.1: the app is the gate or
+ * the editor, never both), which is what lets this be one function in a module
+ * rather than a context. The disposer only clears what it set, so a remount in
+ * either order leaves the live panel holding it.
+ *
  * Switching the section and unfolding the plate are the panel's own state, so
  * the panel hands them over through `setParameterReveal` and this module holds
  * one function rather than a context: `focusParameter` is called from places

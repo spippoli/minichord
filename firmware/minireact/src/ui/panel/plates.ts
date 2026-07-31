@@ -22,8 +22,13 @@ export interface Plate {
   parameters: readonly Parameter[];
 }
 
-/** What identifies a plate to the fold state, across a section switch. */
-export function plateKey(plate: Plate): string {
+/**
+ * What identifies a plate to the fold state, across a section switch.
+ *
+ * A parameter answers it too: it carries the section and the group its plate is
+ * built from, and `focusParameter` has one in hand and no plate.
+ */
+export function plateKey(plate: Pick<Plate, "section" | "group">): string {
   return `${plate.section}/${plate.group}`;
 }
 

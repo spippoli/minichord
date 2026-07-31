@@ -1,5 +1,6 @@
 import { useId } from "react";
 
+import type { Parameter } from "../../domain";
 import { isEdited } from "../../state";
 import { ParameterBinding } from "../parameters/ParameterBinding";
 import { useAppState } from "../runtimeContext";
@@ -24,13 +25,17 @@ export function Plate({
   plate,
   folded,
   onFold,
-  parameters,
+  matching,
 }: {
   plate: PlateModel;
   folded: boolean;
   onFold: () => void;
-  /** What survives the search; the plate itself decides nothing about it. */
-  parameters: readonly PlateModel["parameters"][number][];
+  /**
+   * What survives the search, which the plate decides nothing about. The
+   * edited count is deliberately taken from `plate` instead: a search narrows
+   * what is on screen, and it must not narrow what the header reports.
+   */
+  matching: readonly Parameter[];
 }) {
   const headingId = useId();
   const { parameters: store } = useAppState();
@@ -62,7 +67,7 @@ export function Plate({
 
       {!folded && (
         <div className={styles.plateBody}>
-          {parameters.map((parameter) => (
+          {matching.map((parameter) => (
             <ParameterBinding key={parameter.address} parameter={parameter} />
           ))}
         </div>
