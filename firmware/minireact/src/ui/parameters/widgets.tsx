@@ -1,5 +1,6 @@
 import type {
   CSSProperties,
+  ReactNode,
   KeyboardEventHandler,
   MouseEventHandler,
   RefCallback,
@@ -41,6 +42,13 @@ import styles from "./Control.module.css";
 export type BodyAttributes = ParameterAnchor & {
   id: string;
   ref: RefCallback<HTMLElement>;
+  /**
+   * The visible label, by id. `htmlFor` reaches the labelable elements only,
+   * and the stepper's body is a `div` with `role="spinbutton"`: without this it
+   * announces as an unnamed spin button, and the name is part of the repertoire
+   * no kind opts out of (SPEC.md 6.1, invariant 2).
+   */
+  "aria-labelledby": string;
   "aria-describedby": string;
   "aria-disabled": true | undefined;
   onKeyDown: KeyboardEventHandler;
@@ -157,18 +165,41 @@ export function Menu({ parameter, value, body, onChange }: SlotProps) {
   const unlabelled = value < 0 || value >= labels.length;
 
   return (
-    <select
-      {...body}
-      className={styles.menu}
-      value={value}
-      onChange={(event) => onChange(Number(event.target.value))}
-    >
+    <Dropdown body={body} value={value} onChange={onChange}>
       {unlabelled && <option value={value}>{format(parameter, value)}</option>}
       {labels.map((label, wire) => (
         <option key={label} value={wire}>
           {label}
         </option>
       ))}
+    </Dropdown>
+  );
+}
+
+/**
+ * The one dropdown, worn by both menu kinds: the widget is the same box and
+ * only its options differ, so the box is written once (SPEC.md 8.2 — menus are
+ * right-aligned, so a plate has one edge where values are found).
+ */
+function Dropdown({
+  body,
+  value,
+  onChange,
+  children,
+}: {
+  body: BodyAttributes;
+  value: number;
+  onChange: (value: number) => void;
+  children: ReactNode;
+}) {
+  return (
+    <select
+      {...body}
+      className={styles.menu}
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+    >
+      {children}
     </select>
   );
 }
@@ -225,9 +256,14 @@ const RESTING_TARGET = "none";
  *
  * It lists its targets **by name**, which the legacy does not: there you choose
  * which parameter to control by dragging a cursor over an address number. The
- * names alone are ambiguous — `attack` and `waveform` exist in both the harp
- * and the chord — so the options are grouped by section and group, the same
- * structural fix the plates make for a screen reader (SPEC.md 12.5).
+ * order is the spec's, **address order**, and flat: a group is not a contiguous
+ * run of addresses — the global Settings group is split around MIDI — so
+ * bucketing the list into groups would quietly reorder it.
+ *
+ * The names alone repeat across sections (`attack` and `waveform` exist in both
+ * the harp and the chord), so each option carries where it comes from after its
+ * name. That is the plate's own heading, said per option because a flat list
+ * has no plate to announce it.
  *
  * The resting value is 0, **outside the slot's own declared minimum of 21**.
  * Nothing here clamps it into range.
@@ -237,32 +273,17 @@ export function Picker({ value, body, onChange }: SlotProps) {
     value === PICKER_RESTING_VALUE ||
     pickerTargets.some((target) => target.address === value);
 
-  const groups = new Map<string, Parameter[]>();
-  for (const target of pickerTargets) {
-    const label = `${target.section} / ${target.group}`;
-    const group = groups.get(label);
-    if (group) group.push(target);
-    else groups.set(label, [target]);
-  }
-
   return (
-    <select
-      {...body}
-      className={styles.menu}
-      value={value}
-      onChange={(event) => onChange(Number(event.target.value))}
-    >
+    <Dropdown body={body} value={value} onChange={onChange}>
       <option value={PICKER_RESTING_VALUE}>{RESTING_TARGET}</option>
+      {/* A target the manifest does not know: shown as itself, never snapped
+          to a neighbour. */}
       {!known && <option value={value}>address {value}</option>}
-      {[...groups].map(([label, targets]) => (
-        <optgroup key={label} label={label}>
-          {targets.map((target) => (
-            <option key={target.address} value={target.address}>
-              {target.name}
-            </option>
-          ))}
-        </optgroup>
+      {pickerTargets.map((target) => (
+        <option key={target.address} value={target.address}>
+          {target.name} — {target.section} / {target.group}
+        </option>
       ))}
-    </select>
+    </Dropdown>
   );
 }

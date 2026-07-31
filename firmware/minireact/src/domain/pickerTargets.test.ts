@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { PICKER_RESTING_VALUE, pickerTargets } from "./pickerTargets";
+import {
+  PICKER_RESTING_VALUE,
+  pickerTargets,
+  stepPickerTarget,
+} from "./pickerTargets";
 import { byAddress } from "./parameters";
 
 describe("what a potentiometer can be pointed at (SPEC.md 8.4)", () => {
@@ -35,5 +39,34 @@ describe("what a potentiometer can be pointed at (SPEC.md 8.4)", () => {
       expect(slot?.defaultValue).toBe(PICKER_RESTING_VALUE);
       expect(slot?.min).toBe(21);
     }
+  });
+});
+
+describe("stepping a routing slot by the arrow keys (SPEC.md 8.4, 12.2)", () => {
+  const first = pickerTargets[0].address;
+  const second = pickerTargets[1].address;
+  const last = pickerTargets.at(-1)!.address;
+
+  it("steps to the next target, not to the next number", () => {
+    expect(stepPickerTarget(PICKER_RESTING_VALUE, 1)).toBe(first);
+    expect(stepPickerTarget(first, 1)).toBe(second);
+  });
+
+  it("keeps `none` reachable by keyboard", () => {
+    // The ordinary nudge would clamp into the declared 21..219 and leave the
+    // resting value a thing only a mouse can choose.
+    expect(stepPickerTarget(first, -1)).toBe(PICKER_RESTING_VALUE);
+    expect(stepPickerTarget(PICKER_RESTING_VALUE, -1)).toBe(
+      PICKER_RESTING_VALUE,
+    );
+  });
+
+  it("stops at the ends rather than wrapping", () => {
+    expect(stepPickerTarget(last, 1)).toBe(last);
+    expect(stepPickerTarget(PICKER_RESTING_VALUE, 10_000)).toBe(last);
+  });
+
+  it("steps a value the manifest does not know from rest", () => {
+    expect(stepPickerTarget(999, 1)).toBe(first);
   });
 });

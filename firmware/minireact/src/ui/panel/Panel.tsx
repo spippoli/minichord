@@ -1,4 +1,4 @@
-import { kindOf, visibleParameters, type Section } from "../../domain";
+import { visibleParameters, type Section } from "../../domain";
 import { ParameterBinding } from "../parameters/ParameterBinding";
 import styles from "./Panel.module.css";
 
@@ -11,14 +11,16 @@ import styles from "./Panel.module.css";
  * is mounted at a time**, which is the assumption the render cost of SPEC.md
  * 7.6 was measured under.
  *
- * Every kind is drawn but the sequencer: the rhythm masks are one grid and not
- * sixteen controls (SPEC.md 8.3), and the grid arrives with its own ticket.
+ * Every kind is drawn: the kind is derived from the parameter (SPEC.md 8.1),
+ * and each puts a different widget in the same slot without touching the
+ * repertoire the control already owns. The rhythm masks draw nothing yet — a
+ * control declines them, because they are one grid and not sixteen controls
+ * (SPEC.md 8.3), and the grid arrives with its own ticket.
  */
 const SECTION: Section = "global";
 
 const drawn = visibleParameters.filter(
-  (parameter) =>
-    parameter.section === SECTION && kindOf(parameter) !== "sequencer",
+  (parameter) => parameter.section === SECTION,
 );
 
 export function Panel() {

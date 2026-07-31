@@ -3,8 +3,14 @@ import { describe, expect, it } from "vitest";
 import { ENUMERATIONS, labelsOf } from "./enumerations";
 import { byAddress, visibleParameters } from "./parameters";
 
-/** The waveform addresses of SPEC.md 8.6 — eleven of the fourteen. */
-const WAVEFORM_ADDRESSES = [42, 59, 62, 93, 100, 122, 125, 128, 152, 156, 160];
+/**
+ * The addresses carrying the twelve waveforms, read back out of the table
+ * rather than restated: a copy of the list here would make the assertion below
+ * agree with itself and fail on nothing.
+ */
+const waveformAddresses = [...ENUMERATIONS]
+  .filter(([, labels]) => labels[0] === "sine")
+  .map(([address]) => address);
 
 describe("the named enumerations (SPEC.md 8.6, A.8)", () => {
   it("names exactly fourteen addresses", () => {
@@ -20,11 +26,16 @@ describe("the named enumerations (SPEC.md 8.6, A.8)", () => {
     }
   });
 
-  it("labels the twelve waveforms in wire order, everywhere they appear", () => {
-    for (const address of WAVEFORM_ADDRESSES) {
+  it("labels the twelve waveforms in wire order, at all eleven addresses", () => {
+    // SPEC.md 8.6: eleven of the fourteen carry a waveform.
+    expect(waveformAddresses).toHaveLength(11);
+
+    for (const address of waveformAddresses) {
       expect(labelsOf(address)?.[0]).toBe("sine");
       expect(labelsOf(address)?.[4]).toBe("bandlimited pulse");
       expect(labelsOf(address)?.[11]).toBe("bandlimited square");
+      // Every one of them is a parameter whose own tooltip says "waveform".
+      expect(byAddress.get(address)?.tooltip).toContain("waveform");
     }
   });
 

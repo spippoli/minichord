@@ -13,6 +13,7 @@ import {
   kindOf,
   nudge,
   parse,
+  stepPickerTarget,
   type ControlKind,
   type Parameter,
   type ParameterDescription,
@@ -92,7 +93,11 @@ export function Control({
 }: ControlProps) {
   const readout = useReadoutChannel();
   const bodyId = useId();
+  const labelId = useId();
   const descriptionId = useId();
+
+  // Derived, never passed in (SPEC.md 6.1, invariant 2).
+  const kind = kindOf(parameter);
 
   // A callback ref, because the body is a different element per kind and the
   // one thing this component does with it is give it the focus back.
@@ -150,9 +155,16 @@ export function Control({
 
     if (event.key in by) {
       // The arrows move the value, not the position: near the top of a 0..5000
-      // exponential one step of travel is nine wire values (SPEC.md 8.2).
+      // exponential one step of travel is nine wire values (SPEC.md 8.2). A
+      // routing slot is the exception the data forces — its value is an
+      // address, so it steps by whole targets (SPEC.md 8.4).
       event.preventDefault();
-      change(nudge(parameter, value, by[event.key as keyof typeof by]));
+      const by1 = by[event.key as keyof typeof by];
+      change(
+        kind === "picker"
+          ? stepPickerTarget(value, by1)
+          : nudge(parameter, value, by1),
+      );
       return;
     }
 
@@ -179,10 +191,9 @@ export function Control({
     closeWindow(event.key === "Enter");
   }
 
-  // Derived, never passed in (SPEC.md 6.1, invariant 2). The rhythm masks are
-  // the grid's, not a control's (SPEC.md 8.3), and the panel does not send them
-  // here; the guard is what keeps that a fact rather than an assumption.
-  const kind = kindOf(parameter);
+  // The rhythm masks are the grid's, not a control's: a column is a parameter
+  // and a cell is a bit, so they are drawn as one grid and never as sixteen
+  // controls (SPEC.md 8.3). This is the one place that is stated in code.
   if (kind === "sequencer") return null;
 
   const Slot = SLOT[kind];
@@ -197,7 +208,6 @@ export function Control({
     // handlers sit on the row so the value window feeds it too (invariant 4).
     <div
       className={styles.control}
-      data-kind={kind}
       data-unequipped={unequipped || undefined}
       onPointerEnter={() =>
         readout.show("hover", { address: parameter.address })
@@ -209,7 +219,7 @@ export function Control({
         readout.clear("focus");
       }}
     >
-      <label className={styles.name} htmlFor={bodyId}>
+      <label id={labelId} className={styles.name} htmlFor={bodyId}>
         {parameter.name}
       </label>
       <span className={styles.address} aria-hidden="true">
@@ -231,6 +241,7 @@ export function Control({
             },
             // How the panel finds this control again (invariant 6).
             ...parameterAnchor(parameter.address),
+            "aria-labelledby": labelId,
             "aria-describedby": descriptionId,
             // Never `disabled`: that removes the slot from the tab order, and
             // delivers its explanation to the mouse only (SPEC.md 12.6).

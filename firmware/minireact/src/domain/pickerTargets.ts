@@ -31,3 +31,25 @@ export const pickerTargets: readonly Parameter[] = visibleParameters
       parameter.address >= FIRST_TARGET && parameter.address <= LAST_TARGET,
   )
   .toSorted((a, b) => a.address - b.address);
+
+/**
+ * Move a routing slot by whole targets, the way the arrow keys do everywhere
+ * else — by value rather than by position (SPEC.md 8.2).
+ *
+ * A picker cannot use the ordinary nudge: its value is an address and the gaps
+ * between them are not steps, and clamping into the declared 21..219 would make
+ * the resting value of 0 unreachable by keyboard, leaving "none" a thing only a
+ * mouse can choose (SPEC.md 8.4, 12.2).
+ */
+export function stepPickerTarget(value: number, step: number): number {
+  const addresses = [
+    PICKER_RESTING_VALUE,
+    ...pickerTargets.map((target) => target.address),
+  ];
+
+  // A target the manifest does not know steps from rest, which is the only
+  // place a value it does not contain can honestly be said to sit.
+  const at = Math.max(0, addresses.indexOf(value));
+  const to = Math.min(Math.max(at + step, 0), addresses.length - 1);
+  return addresses[to];
+}

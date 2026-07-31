@@ -25,8 +25,12 @@ export {
 export type { ControlKind } from "./kind";
 export { kindOf } from "./kind";
 
-export { ENUMERATIONS, labelsOf } from "./enumerations";
-export { PICKER_RESTING_VALUE, pickerTargets } from "./pickerTargets";
+export { labelsOf } from "./enumerations";
+export {
+  PICKER_RESTING_VALUE,
+  pickerTargets,
+  stepPickerTarget,
+} from "./pickerTargets";
 
 export type { ParameterCondition, ParameterDescription } from "./description";
 export { RESTING_LINE, describeParameter } from "./description";
