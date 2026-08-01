@@ -835,3 +835,72 @@ describe("banks and persistence, through the wire (SPEC.md 10)", () => {
     expect(h.runtime.getState().parameters.pendingCommand).toBeNull();
   });
 });
+
+describe("applying a preset, through the wire (SPEC.md 11.3)", () => {
+  /** A code the device has never seen: every declared address shifted. */
+  function foreignPreset(h: Harness): readonly number[] {
+    const live = h.runtime.getState().parameters.values as readonly number[];
+    return live.map((value, address) => (address === 40 ? value + 1 : value));
+  }
+
+  it("lands the code and says so with nothing left over", async () => {
+    const h = harness();
+    await connect(h);
+    const wanted = foreignPreset(h);
+
+    await h.runtime.applyPreset(wanted);
+
+    const { parameters } = h.runtime.getState();
+    expect(parameters.values?.[40]).toBe(wanted[40]);
+    expect(parameters.lastLossNotice).toEqual({
+      kind: "preset-applied",
+      diverged: 0,
+    });
+  });
+
+  it("leaves the reference alone: an import is an edit, not a load", async () => {
+    // Flash is untouched, so the physical bank button gets the saved sound
+    // back and every address the import moved is owed its amber LED.
+    const h = harness();
+    await connect(h);
+
+    await h.runtime.applyPreset(foreignPreset(h));
+
+    const edited = editBuffer(h.runtime.getState().parameters);
+    expect(edited.map((row) => row.parameter.address)).toEqual([40]);
+  });
+
+  it("writes 189 addresses, and never 1, 2–7 or 255", async () => {
+    const h = harness();
+    await connect(h);
+    const written = new Set<number>();
+    const send = vi.spyOn(h.transport, "sendParameter");
+
+    await h.runtime.applyPreset(foreignPreset(h));
+    for (const [address] of send.mock.calls) written.add(address);
+
+    expect(written.size).toBe(189);
+    for (const address of [0, 1, 2, 3, 4, 5, 6, 7, 255]) {
+      expect(written.has(address)).toBe(false);
+    }
+  });
+
+  it("says how many values did not take when the wire is gone", async () => {
+    // The reducer refuses edits with no wire and the bulk write refuses too, so
+    // nothing was confirmed and the count is the whole of what was sent. The
+    // field that asked has to be told something, or it says "Applying…" for the
+    // rest of the session.
+    const h = harness();
+    await connect(h);
+    const wanted = foreignPreset(h);
+
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+    await h.runtime.applyPreset(wanted);
+
+    expect(h.runtime.getState().parameters.lastLossNotice).toEqual({
+      kind: "preset-applied",
+      diverged: 189,
+    });
+  });
+});

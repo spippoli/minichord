@@ -2,20 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BANK_ADDRESS, bankNumber, encodePresetCode } from "../../domain";
 import { useAppState, useReadOnly, useRuntime } from "../runtimeContext";
+import { ARMED_MS, COPIED_MS } from "./arming";
 import styles from "./Banks.module.css";
-
-/**
- * How long the question stands before it withdraws itself.
- *
- * Long enough to read the sentence and answer it, short enough that an armed
- * destructive button is never left lying under a hand that has moved on. Every
- * gesture *inside* the question renews it — copying the preset code is part of
- * answering, not a change of subject.
- */
-const ARMED_MS = 5000;
-
-/** How long "Copied." stands. It reports a clipboard, not a device. */
-const COPIED_MS = 3000;
 
 /**
  * The editing row: commit the work, or throw the bank away (SPEC.md 10.2,

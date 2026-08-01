@@ -1,5 +1,6 @@
 import { BANK_ADDRESS, bankNumber } from "../domain";
 import { firmwareVersion, type AppState } from "../state";
+import { unsavedChanges, valuesDidNotTake } from "./counts";
 
 /**
  * What the strip says, as a pure function of what the app holds.
@@ -16,9 +17,6 @@ import { firmwareVersion, type AppState } from "../state";
  * name, the firmware version and the live bank for the rest of the session —
  * and SPEC.md 9.6 puts the firmware version in the strip precisely because it
  * is the only explanation for an unequipped slot.
- *
- * The one notice this file does not yet produce — the preset import — arrives
- * with the ticket that raises it, as a further case of the ones below.
  */
 
 /** SPEC.md A.3: the wire is gone, and the edits are on screen and stuck there. */
@@ -73,25 +71,15 @@ export function stripNotice(state: AppState): string | null {
 
     case "wiped":
       return "All banks reset to factory.";
-  }
-}
 
-/**
- * `{k}` is always a count, and the singular is spelled out (SPEC.md A.3).
- *
- * "1 unsaved changes are gone" is the kind of thing a machine says, in the two
- * lines whose whole job is to be believed about something that was just lost.
- *
- * **The verb comes back with the phrase**, even though only one of the two
- * lines has one. The singular is a single fact about `k`, and answered in two
- * places it is two places to disagree — which is exactly what a count of one
- * gets wrong. The line that needs no verb ignores it.
- */
-function unsavedChanges(k: number): {
-  readonly phrase: string;
-  readonly verb: string;
-} {
-  return k === 1
-    ? { phrase: "1 unsaved change", verb: "is" }
-    : { phrase: `${k} unsaved changes`, verb: "are" };
+    // The only acknowledgement an import gets, and it is owed one either way:
+    // 189 messages went out on a wire that does not confirm them, so "it
+    // worked" is news. What did not stick is stated and not repaired — two
+    // rounds have already been spent, and a third would be fighting the
+    // firmware normalising a value rather than packet loss (SPEC.md 11.3).
+    case "preset-applied":
+      return notice.diverged === 0
+        ? "Preset applied."
+        : `Preset applied, but ${valuesDidNotTake(notice.diverged)}. Try again, or check the minichord.`;
+  }
 }

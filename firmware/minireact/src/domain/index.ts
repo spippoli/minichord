@@ -22,7 +22,14 @@ export {
   visibleParameters,
 } from "./parameters";
 
-export { PRESET_CODE_VALUE_COUNT, encodePresetCode } from "./presetCode";
+export type { PresetCodeReading, PresetCodeRejection } from "./presetCode";
+export {
+  MAX_WIRE_VALUE,
+  PRESET_CODE_VALUE_COUNT,
+  decodePresetCode,
+  encodePresetCode,
+  presetWriteMap,
+} from "./presetCode";
 
 export type { ControlKind } from "./kind";
 export { kindOf } from "./kind";

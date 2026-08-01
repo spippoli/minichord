@@ -90,8 +90,10 @@
 
 /*
  * The maintenance area sits at the foot of the panel, after the dock: away from
- * the editing row is a distance in the page, not a different colour.
+ * the editing row is a distance in the page, not a different colour. It is two
+ * boxes cast alike — the preset fields, then the wipe.
  */
+.presets,
 .maintenance {
   margin-top: 1rem;
   padding: 0.5rem 0.75rem;
@@ -127,4 +129,42 @@
   background: var(--window);
   color: var(--window-ink);
   box-shadow: var(--window-glow);
+}
+
+/*
+ * A preset code is ~900 characters, so its window takes whatever the row has
+ * left. `min-width: 0` is what actually does it: a flex item defaults to its
+ * content width as a floor, and an input's is wide enough to push the Copy
+ * button off the panel.
+ */
+.codeField {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The label of a field, above the row it belongs to. */
+.fieldLabel {
+  display: block;
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.8rem;
+  color: var(--silkscreen-dim);
+}
+
+/*
+ * Why the paste was refused, under the field that caused it and never in an
+ * alert (SPEC.md 11.2). Empty far more often than not, and taking no space
+ * when it is — a reserved empty line under a field reads as a field that has
+ * something to say and is not saying it.
+ */
+.refusal {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  /* Read, not decorated: there is no error token in the moulding and inventing
+     a red would be inventing a token (SPEC.md 7.4), so the refusal takes the
+     strongest silkscreen there is rather than the dimmest. */
+  color: var(--silkscreen-strong);
+}
+
+.refusal:empty {
+  display: none;
 }
