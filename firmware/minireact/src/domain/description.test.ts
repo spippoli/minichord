@@ -137,6 +137,23 @@ describe("the one sentence a screen reader hears (SPEC.md A.5)", () => {
     ).toBe(`step 4, note 2. ${parameterAt(223).tooltip}.`);
   });
 
+  it("gives a cell the two state LEDs too, around the tooltip", () => {
+    // A column is a parameter and diverges like one, so the grid is not exempt
+    // from the two LEDs — the exception of SPEC.md 6.1 invariant 3 is to the
+    // kind. The cell opens the sentence and the two states close it (A.5).
+    expect(
+      describeParameter(parameterAt(223), {
+        firmwareVersion: CURRENT_FIRMWARE,
+        cell: { step: 4, note: 2, outOfCycle: false },
+        changedFromStoredBank: true,
+        differsFromDefault: true,
+      }).sentence,
+    ).toBe(
+      `step 4, note 2. ${parameterAt(223).tooltip}. ` +
+        "changed from the stored bank. differs from the factory default.",
+    );
+  });
+
   it("never doubles a full stop on a tooltip that carries its own", () => {
     // Eleven of the 195 tooltips end in a full stop.
     const withStop = describeParameter(

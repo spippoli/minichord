@@ -22,6 +22,7 @@ import { parameterAnchor } from "../panel/focusParameter";
 import { useReadoutChannel } from "../readout/readoutChannel";
 import styles from "./Control.module.css";
 import { ControlDescription } from "./ControlDescription";
+import { StateLeds, type Divergence } from "./StateLeds";
 import {
   Fader,
   Menu,
@@ -78,10 +79,8 @@ export type ControlProps = {
   description: ParameterDescription;
   /** The device is older than the parameter: the slot stays, empty. */
   unequipped: boolean;
-  /** The amber LED: this differs from what is stored in the bank. */
-  edited: boolean;
-  /** The blue LED: this differs from the factory default. */
-  offDefault: boolean;
+  /** The two LEDs, read once by the binding and never composed here. */
+  divergence: Divergence;
   onChange: (value: number) => void;
   onPointerDown: () => void;
   onPointerUp: () => void;
@@ -92,8 +91,7 @@ export function Control({
   value,
   description,
   unequipped,
-  edited,
-  offDefault,
+  divergence,
   onChange,
   onPointerDown,
   onPointerUp,
@@ -229,20 +227,7 @@ export function Control({
       <label id={labelId} className={styles.name} htmlFor={bodyId}>
         {parameter.name}
       </label>
-      {/*
-        Divergence at its finest magnification (SPEC.md 7.3): amber for "differs
-        from what is stored in the bank", blue for "differs from the factory
-        default". They are `aria-hidden` and carry no title, because the same two
-        states are already in the description sentence the reader hears — for a
-        reader that state had never existed at all (SPEC.md 12.5, A.5).
-      */}
-      <span className={styles.leds} aria-hidden="true">
-        <span className={styles.ledEdited} data-lit={edited || undefined} />
-        <span
-          className={styles.ledOffDefault}
-          data-lit={offDefault || undefined}
-        />
-      </span>
+      <StateLeds divergence={divergence} className={styles.leds} />
 
       <span className={styles.address} aria-hidden="true">
         {parameter.address}

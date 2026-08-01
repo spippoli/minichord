@@ -34,20 +34,21 @@ export function ParameterBinding({ parameter }: { parameter: Parameter }) {
   // lights them and to the one producer of everything the app *says* about a
   // parameter (SPEC.md 6.1, invariant 5). A control composing that sentence
   // itself is the invariant being broken.
-  const edited = isEdited(parameters, parameter.address);
-  const offDefault = differsFromDefault(parameters, parameter.address);
+  const divergence = {
+    edited: isEdited(parameters, parameter.address),
+    offDefault: differsFromDefault(parameters, parameter.address),
+  };
 
   return (
     <Control
       parameter={parameter}
       value={values[parameter.address]}
       unequipped={!isAvailable(parameter, version)}
-      edited={edited}
-      offDefault={offDefault}
+      divergence={divergence}
       description={describeParameter(parameter, {
         firmwareVersion: version,
-        changedFromStoredBank: edited,
-        differsFromDefault: offDefault,
+        changedFromStoredBank: divergence.edited,
+        differsFromDefault: divergence.offDefault,
       })}
       // Optimism, and its subordination to the connection, are the reducer's:
       // an edit with no wire is refused there, not drawn away here.

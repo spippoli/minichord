@@ -28,37 +28,13 @@
 }
 
 /*
- * The two state LEDs (SPEC.md 7.3). They keep their place lit or dark: a pair
- * that appears and disappears moves the address beside it on every edit, and a
- * dense plate of ten controls would then twitch line by line.
+ * Where the two state LEDs stand, and only that: they are drawn by `StateLeds`
+ * and moulded in its own stylesheet, because the sequencer's column headers
+ * light the same pair (SPEC.md 7.3). Their place is held lit or dark, so the
+ * address beside them does not move on every edit.
  */
 .leds {
   grid-area: leds;
-  display: flex;
-  gap: 0.2rem;
-}
-
-.led {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 50%;
-  background: var(--led-dark);
-}
-
-.ledEdited {
-  composes: led;
-}
-
-.ledEdited[data-lit] {
-  background: var(--led-edited);
-}
-
-.ledOffDefault {
-  composes: led;
-}
-
-.ledOffDefault[data-lit] {
-  background: var(--led-off-default);
 }
 
 .address {
