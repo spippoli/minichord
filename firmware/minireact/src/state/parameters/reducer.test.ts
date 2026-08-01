@@ -345,7 +345,7 @@ describe("the blue LED, against the factory default (SPEC.md 7.3)", () => {
   });
 });
 
-describe("the edit buffer the dock lists (SPEC.md 7.3, A.6)", () => {
+describe("the divergences the dock lists (SPEC.md 7.3, A.6)", () => {
   it("is empty on the dump that captured the reference", () => {
     expect(editBuffer(dumped())).toEqual([]);
   });

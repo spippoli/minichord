@@ -153,7 +153,7 @@ export function differsFromDefault(
  *
  * `visibleParameters` is deliberately the source rather than every address of
  * the manifest: the six hidden ones are exactly the six excluded above — the
- * five physical knobs and the firmware version — so the edit buffer never has
+ * five physical knobs and the firmware version — so the dock never has
  * to subtract them a second time, and the five get the dock's one line rather
  * than a row of their own (SPEC.md 7.3).
  */
