@@ -52,14 +52,15 @@ export function stripNotice(state: AppState): string | null {
       // Nothing lost is not a smaller version of the loss line: it is the good
       // news the loss line would otherwise be mistaken for, said plainly.
       if (notice.lost === 0) return `Reconnected — bank ${bank}.`;
-      return `Reconnected on bank ${bank}. The minichord restarted and reloaded from flash, so ${unsavedChanges(notice.lost)} ${notice.lost === 1 ? "is" : "are"} gone.`;
+      const { phrase, verb } = unsavedChanges(notice.lost);
+      return `Reconnected on bank ${bank}. The minichord restarted and reloaded from flash, so ${phrase} ${verb} gone.`;
     }
 
     // A bank change only ever speaks about what it cost: the store raises this
     // with nothing lost never at all, because the number and the hue beside
     // this line have already said that the bank changed (SPEC.md 10.5).
     case "bank-changed":
-      return `Bank ${bankNumber(notice.bank)} loaded — ${unsavedChanges(notice.lost)} lost.`;
+      return `Bank ${bankNumber(notice.bank)} loaded — ${unsavedChanges(notice.lost).phrase} lost.`;
 
     // The acknowledgement a ~165 ms round trip is owed (SPEC.md 10.2), and the
     // only one there is: a save asks nothing before acting, so this line is the
@@ -80,9 +81,17 @@ export function stripNotice(state: AppState): string | null {
  *
  * "1 unsaved changes are gone" is the kind of thing a machine says, in the two
  * lines whose whole job is to be believed about something that was just lost.
- * One function for both of them: the rule is about the count, and written twice
- * it would be the kind of thing that gets fixed in one place.
+ *
+ * **The verb comes back with the phrase**, even though only one of the two
+ * lines has one. The singular is a single fact about `k`, and answered in two
+ * places it is two places to disagree — which is exactly what a count of one
+ * gets wrong. The line that needs no verb ignores it.
  */
-function unsavedChanges(k: number): string {
-  return k === 1 ? "1 unsaved change" : `${k} unsaved changes`;
+function unsavedChanges(k: number): {
+  readonly phrase: string;
+  readonly verb: string;
+} {
+  return k === 1
+    ? { phrase: "1 unsaved change", verb: "is" }
+    : { phrase: `${k} unsaved changes`, verb: "are" };
 }

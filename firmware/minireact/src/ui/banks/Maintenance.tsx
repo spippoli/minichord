@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 
-import { useReadOnly, useRuntime } from "../runtimeContext";
+import { useAppState, useReadOnly, useRuntime } from "../runtimeContext";
 import styles from "./Banks.module.css";
 
 /**
@@ -18,6 +18,7 @@ import styles from "./Banks.module.css";
  */
 export function Maintenance() {
   const runtime = useRuntime();
+  const { parameters } = useAppState();
   const readOnly = useReadOnly();
   const [typed, setTyped] = useState("");
   const headingId = useId();
@@ -28,8 +29,16 @@ export function Maintenance() {
   // what the friction is for.
   const confirmed = typed === "WIPE";
 
+  // The same refusal the editing row makes, and it is owed for the same reason
+  // even at this distance from it: a save issued a moment ago has one flag
+  // waiting for one dump, and a wipe landing inside that window would take the
+  // acknowledgement of the save with it and put a second flash erase on a
+  // device already in the middle of one (SPEC.md 10.2). The reducer refuses it;
+  // this stops the button from looking as though it would work.
+  const busy = readOnly || parameters.pendingCommand !== null;
+
   function wipe() {
-    if (!confirmed || readOnly) return;
+    if (!confirmed || busy) return;
     // Cleared on the click rather than on the answer: the friction is spent,
     // and a second wipe must be typed for again.
     setTyped("");
@@ -64,7 +73,11 @@ export function Maintenance() {
         <button
           type="button"
           className={styles.key}
-          disabled={!confirmed || readOnly}
+          // Not `disabled`: the click that fires clears the word, which would
+          // disable the button under the hand that just pressed it and drop the
+          // focus to `<body>` — the focus steal of SPEC.md 9.7, arriving as a
+          // consequence rather than as a call.
+          aria-disabled={!confirmed || busy}
           onClick={wipe}
         >
           Wipe all banks

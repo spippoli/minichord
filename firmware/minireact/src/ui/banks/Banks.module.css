@@ -39,9 +39,24 @@
   color: var(--key-active-ink);
 }
 
-.key:disabled {
+/*
+ * `aria-disabled`, not `:disabled`, and the whole of the difference is the
+ * focus: these keys refuse the click but stay mounted and reachable, because
+ * disabling the one under the hand drops the caret to `<body>` for the length
+ * of a round trip and never gives it back (SPEC.md 9.7, 10.4). What it looks
+ * like is unchanged.
+ */
+.key[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+/* A refused key is not a pressed key, whatever the pointer is doing to it. */
+.key[aria-disabled="true"]:active {
+  border-color: var(--key-edge);
+  border-top-color: var(--edge-light);
+  background: var(--key);
+  color: var(--key-ink);
 }
 
 /*
@@ -59,9 +74,18 @@
   cursor: pointer;
 }
 
+/*
+ * The live region stands in the row whether or not it is saying anything, so
+ * that what it says is announced when it arrives; empty, it takes no space and
+ * no gap.
+ */
 .copied {
   font-size: 0.8rem;
   color: var(--silkscreen-dim);
+}
+
+.copied:empty {
+  display: none;
 }
 
 /*

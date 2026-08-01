@@ -340,7 +340,7 @@ export type ConnectionView = {
  * is: whether the values came back changed. That is a comparison of the dump
  * against the store, which is the same question SPEC.md 5.3 already asks.
  */
-function noticeFor(
+function noticeForDump(
   state: ParametersState,
   values: readonly number[],
   connection: ConnectionView,
@@ -354,6 +354,23 @@ function noticeFor(
   }
 
   const bank = values[BANK_ADDRESS];
+
+  // **A bank change is read before a command we issued, and that order is the
+  // rule.** None of the three commands moves the bank — `save_config` writes
+  // the bank the device is already in — so a dump that carries a different one
+  // is a physical preset button, whatever we happened to have in flight. Read
+  // the other way round, a press landing inside the command window would be
+  // acknowledged as `Saved to bank {the new one}`: a save into a bank nobody
+  // asked for, reported as done, while the one line SPEC.md 10.5 lets past the
+  // silence — what the press cost — is never said. The count is taken from the
+  // state *before* this dump lands, because the dump destroys the evidence.
+  if (bankChanged) {
+    const lost = editBuffer(state).length;
+    return lost === 0 ? null : { kind: "bank-changed", bank, lost };
+  }
+
+  // The bank did not move, so the bank in this dump is the bank the command was
+  // issued against: it is the store's own, and only a dump can change it.
   switch (state.pendingCommand) {
     case "save":
       return { kind: "saved", bank };
@@ -363,12 +380,7 @@ function noticeFor(
       return { kind: "wiped" };
   }
 
-  // A bank change we did not cause: the physical buttons, which are the only
-  // way to change bank at all (SPEC.md 10.1). The count is taken from the state
-  // *before* this dump lands, because the dump is what destroys the evidence.
-  if (!bankChanged) return null;
-  const lost = editBuffer(state).length;
-  return lost === 0 ? null : { kind: "bank-changed", bank, lost };
+  return null;
 }
 
 export function parametersReducer(
@@ -396,7 +408,7 @@ export function parametersReducer(
           // Consumed, whatever it was: this dump is the answer, and a flag left
           // standing would capture a reference off the next unrelated dump.
           pendingCommand: null,
-          lastLossNotice: noticeFor(state, values, connection, bankChanged),
+          lastLossNotice: noticeForDump(state, values, connection, bankChanged),
         },
         effects: [],
       };
@@ -407,6 +419,17 @@ export function parametersReducer(
       // no wire the command reaches nothing, and the acknowledgement would be
       // about a device that never heard it.
       if (connection.status !== "connected" || !state.values) {
+        return { state, effects: [] };
+      }
+      // **At most one flash command is in flight, and it is refused here.** The
+      // flag is one field and the next dump consumes it, so a second command
+      // issued inside the window would overwrite the first: one dump would be
+      // read as the second one's answer and the first would be acknowledged as
+      // nothing, while two flash writes overlapped on a device that erases
+      // sectors. The two buttons already disable themselves, but a rule the
+      // components carry is a rule three of them can forget — this is the one
+      // place it can be tested (SPEC.md 5.2, 10.2).
+      if (state.pendingCommand !== null) {
         return { state, effects: [] };
       }
       return {

@@ -8,6 +8,7 @@
  * and it lands with the ticket that raises it.
  */
 
+import { FIRMWARE_VERSION_ADDRESS } from "./addresses";
 import { byAddress } from "./parameters";
 
 /**
@@ -18,7 +19,7 @@ import { byAddress } from "./parameters";
  * satisfies its `length != 256` check. Writing 256 would produce a code the
  * legacy editor and the minishop both reject.
  */
-export const PRESET_VALUE_COUNT = 255;
+export const PRESET_CODE_VALUE_COUNT = 255;
 
 /**
  * The store, as the code every other tool in this ecosystem can read.
@@ -35,18 +36,27 @@ export const PRESET_VALUE_COUNT = 255;
  * every published code begins `0;0;` — the code *is* a bank, so which bank it
  * came out of is not part of it.
  *
- * The fiction of SPEC.md 5.4 does travel, because 2–7 are declared parameters
- * and the store holds values there: published codes begin
- * `0;0;50;50;512;512;512;0`, which is the fiction exactly. Only byte 7 differs
- * — we send the firmware version the device reported rather than the legacy's
- * 0 — and it is inert whatever it says, because the firmware heals that slot on
- * every write (SPEC.md 1.5).
+ * **The firmware version serialises as `0` too**, and it is the one declared
+ * parameter that does. SPEC.md 11.1 says to write the format byte for byte, and
+ * records what that produces: all 43 published codes begin
+ * `0;0;50;50;512;512;512;0`. Sending the version the connected device happens
+ * to report would make one sound produce two different codes on two devices —
+ * the diffability the rule above exists for, given up on the one byte that says
+ * nothing about a sound. It is inert on import either way, because the firmware
+ * heals that address on every write (SPEC.md 1.5).
+ *
+ * The rest of the fiction of SPEC.md 5.4 does travel, because 2–6 are declared
+ * parameters and the store holds the forced values there.
  *
  * The bank hue is declared, so it travels (SPEC.md 7.4).
  */
-export function encodePreset(values: readonly number[]): string {
-  const fields = Array.from({ length: PRESET_VALUE_COUNT }, (_, address) =>
-    byAddress.has(address) ? values[address] : 0,
+export function encodePresetCode(values: readonly number[]): string {
+  const fields = Array.from(
+    { length: PRESET_CODE_VALUE_COUNT },
+    (_, address) =>
+      byAddress.has(address) && address !== FIRMWARE_VERSION_ADDRESS
+        ? values[address]
+        : 0,
   );
   return btoa(`${fields.join(";")};`);
 }
