@@ -13,10 +13,10 @@
 
 .control {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   grid-template-areas:
-    "name address"
-    "fader window";
+    "name leds address"
+    "fader fader window";
   align-items: center;
   gap: 0.15rem 0.5rem;
   padding: 0.35rem 0.5rem;
@@ -25,6 +25,16 @@
 .name {
   grid-area: name;
   font-size: 0.8rem;
+}
+
+/*
+ * Where the two state LEDs stand, and only that: they are drawn by `StateLeds`
+ * and moulded in its own stylesheet, because the sequencer's column headers
+ * light the same pair (SPEC.md 7.3). Their place is held lit or dark, so the
+ * address beside them does not move on every edit.
+ */
+.leds {
+  grid-area: leds;
 }
 
 .address {

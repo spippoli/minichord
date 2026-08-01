@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { byAddress, type Section } from "../../domain";
+import { Dock } from "./Dock";
 import { focusParameter, setParameterReveal } from "./focusParameter";
 import styles from "./Panel.module.css";
 import { Plate } from "./Plate";
@@ -157,8 +158,21 @@ export function Panel() {
     }
   }
 
+  const gridId = `${tabId}-panel`;
+  const dockId = `${tabId}-dock`;
+
   return (
     <main className={styles.panel}>
+      {/*
+        The panel's first tab stop (SPEC.md 12.3). Reaching the dock otherwise
+        means crossing all 96 controls of a chord section, and this is the
+        oldest mechanism on the web: discovered by pressing Tab, costing no new
+        key and no new vocabulary. The way back is the dock's own.
+      */}
+      <a className={styles.skipLink} href={`#${dockId}`}>
+        Skip to the edit buffer
+      </a>
+
       <div className={styles.chrome}>
         <div
           ref={tabs}
@@ -179,7 +193,7 @@ export function Panel() {
                 data-section={tab.section}
                 className={styles.tab}
                 aria-selected={tab.section === section}
-                aria-controls={`${tabId}-panel`}
+                aria-controls={gridId}
                 tabIndex={tab.section === section ? 0 : -1}
                 title={matches > 0 ? `${matches} matches` : undefined}
                 onClick={() => setSection(tab.section)}
@@ -217,9 +231,12 @@ export function Panel() {
       </div>
 
       <div
-        id={`${tabId}-panel`}
+        id={gridId}
         className={styles.flow}
         role="tabpanel"
+        // Where "Back to the panel" lands: the region is the destination, and a
+        // tabpanel is not focusable on its own account.
+        tabIndex={-1}
         aria-labelledby={`${tabId}-${section}`}
       >
         {visible.map(({ plate, parameters }) => {
@@ -239,6 +256,13 @@ export function Panel() {
           );
         })}
       </div>
+
+      {/*
+        After the grid, and it stays there (SPEC.md 12.3): reordering the DOM so
+        the dock precedes the panel would make a reader hear the result of
+        editing before the panel that produces it.
+      */}
+      <Dock id={dockId} backTo={gridId} />
     </main>
   );
 }

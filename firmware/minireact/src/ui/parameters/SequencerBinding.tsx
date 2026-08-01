@@ -7,7 +7,7 @@ import {
   withRhythmNote,
   type Parameter,
 } from "../../domain";
-import { firmwareVersion } from "../../state";
+import { differsFromDefault, firmwareVersion, isEdited } from "../../state";
 import { useAppState, useRuntime } from "../runtimeContext";
 import { Sequencer } from "./Sequencer";
 
@@ -52,11 +52,20 @@ export function SequencerBinding() {
 
   const version = firmwareVersion(parameters);
   const masks = COLUMNS.map((column) => values[column.address]);
+  // A column *is* a parameter, so it diverges like one and the grid is not
+  // exempt from the two LEDs of SPEC.md 7.3 — the exception of invariant 3 is
+  // to the *kind*, not to the repertoire. Read here, once per column, exactly
+  // as a binding reads them for a control (invariant 1).
+  const divergence = COLUMNS.map((column) => ({
+    edited: isEdited(parameters, column.address),
+    offDefault: differsFromDefault(parameters, column.address),
+  }));
 
   return (
     <Sequencer
       columns={COLUMNS}
       masks={masks}
+      divergence={divergence}
       cycleLength={values[CYCLE_LENGTH_ADDRESS]}
       firmwareVersion={version}
       // The sixteen columns share one `introduction_version`, so the grid is

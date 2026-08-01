@@ -21,6 +21,36 @@
   padding: 1rem;
 }
 
+/*
+ * The skip link, both ways (SPEC.md 12.3).
+ *
+ * Off screen until it takes the focus, and then in the flow rather than floated
+ * over the chrome: the panel's first stop must be *seen* the moment it is
+ * reached, and a fixed overlay in a dense workbench lands on top of the tabs.
+ * `clip-path` rather than `display: none`, which would take it out of the tab
+ * order — the one thing it exists to be in.
+ */
+.skipLink {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+.skipLink:focus-visible {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0.2rem 0.5rem;
+  overflow: visible;
+  clip-path: none;
+}
+
 /* The tabs, the search box and the fold controls, on one line. */
 .chrome {
   display: flex;
@@ -197,4 +227,94 @@
   /* At the narrow floor the sixteen steps still fit; below it the panel
      scrolls sideways on purpose (SPEC.md 7.5), and so does this. */
   overflow-x: auto;
+}
+
+/*
+ * The dock (SPEC.md 7.3): every changed parameter, with the way back.
+ *
+ * It sits after the multi-column flow and outside it — `column-span: all` would
+ * put it inside a flow whose height it does not belong to, and a list that
+ * grows as you edit must not reshuffle the plates above it.
+ */
+.dock {
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--edge-plate);
+  border-top-color: var(--edge-light);
+  background: var(--plastic-plate);
+}
+
+.dockChrome {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dockHeading {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.dockEmpty,
+.dockFiction {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.dockRows {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One row per changed parameter: `{name} · {stored} → {current} · Revert`. */
+.dockRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.1rem 0;
+  font-size: 0.85rem;
+}
+
+.dockSeparator {
+  opacity: 0.5;
+}
+
+/* The jump link reads as a link and behaves as one; it is a button because it
+   moves the focus rather than navigating (see `Dock.tsx`). */
+.dockJump {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  text-decoration: underline;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dockChange {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Revert is a key, like every other thing on the panel you press. */
+.dockAction {
+  padding: 0 0.4rem;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
+  font: inherit;
+  font-size: 0.8rem;
+  background: var(--key);
+  color: var(--key-ink);
+  cursor: pointer;
+}
+
+.dockAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* The "Revert all" sits on the heading line, at the far end of it. */
+.dockChrome .dockAction {
+  margin-inline-start: auto;
 }

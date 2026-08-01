@@ -15,6 +15,7 @@ import { parameterAnchor } from "../panel/focusParameter";
 import { useReadoutChannel } from "../readout/readoutChannel";
 import { ControlDescription } from "./ControlDescription";
 import styles from "./Sequencer.module.css";
+import { StateLeds, type Divergence } from "./StateLeds";
 import {
   FIRST_CELL,
   moveCursor,
@@ -58,6 +59,14 @@ export type SequencerProps = {
   columns: readonly Parameter[];
   /** Their sixteen raw masks, in the same order. */
   masks: readonly number[];
+  /**
+   * The two LEDs of each column, in the same order.
+   *
+   * A column is a parameter and a cell is a bit, so divergence is a fact about
+   * the column: sixteen pairs, on the sixteen headers, and never on the 112
+   * cells (SPEC.md 7.3).
+   */
+  divergence: readonly Divergence[];
   /** `cycle length` (address 188): how far the firmware ever reaches. */
   cycleLength: number;
   /** The device the description explains an unequipped slot against. */
@@ -73,6 +82,7 @@ const NOTES = Array.from({ length: RHYTHM_NOTE_COUNT }, (_, note) => note);
 export function Sequencer({
   columns,
   masks,
+  divergence,
   cycleLength,
   firmwareVersion,
   unequipped,
@@ -139,6 +149,12 @@ export function Sequencer({
             }
           >
             {step + 1}
+            {/* The column's two LEDs. The header is where they belong: the
+                address is the column's, and 112 lit cells would say the same
+                thing sixteen times over (SPEC.md 7.3). The `aria-label` above
+                already names this header, so hidden decoration inside it stays
+                hidden. */}
+            <StateLeds divergence={divergence[step]} />
           </span>
         ))}
       </div>
@@ -162,6 +178,11 @@ export function Sequencer({
             const description = describeParameter(column, {
               firmwareVersion,
               cell: sequencerCell(step, note, cycleLength),
+              // The two LEDs join the sentence here as they do everywhere
+              // else: a reader is told the column diverged, having no LED to
+              // look at (SPEC.md 12.5, A.5).
+              changedFromStoredBank: divergence[step].edited,
+              differsFromDefault: divergence[step].offDefault,
             });
             const target = { address: column.address, bit: note };
 

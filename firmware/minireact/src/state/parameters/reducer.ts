@@ -1,4 +1,10 @@
-import { BANK_ADDRESS, FIRMWARE_VERSION_ADDRESS } from "../../domain";
+import {
+  BANK_ADDRESS,
+  FIRMWARE_VERSION_ADDRESS,
+  defaultWire,
+  visibleParameters,
+  type Parameter,
+} from "../../domain";
 import { PARAMETER_COUNT } from "../../transport";
 import type { ConnectionStatus } from "../connection/reducer";
 import type { Effect } from "../effects";
@@ -79,7 +85,7 @@ export const NEUTRALISED: ReadonlyMap<number, number> = new Map([
 ]);
 
 /**
- * The slots no comparison against the stored bank may look at (SPEC.md 7.3).
+ * The slots no comparison may look at (SPEC.md 5.4, 7.3).
  *
  * The five of SPEC.md 5.4 hold a fiction the store forces, so they never differ
  * and would never be edited; the firmware version is healed by the device on
@@ -91,6 +97,20 @@ const OUTSIDE_COMPARISON: ReadonlySet<number> = new Set([
 ]);
 
 /**
+ * Whether a comparison may look at this address at all.
+ *
+ * **This is the layer's one copy of that question**, and it is derived from
+ * `NEUTRALISED` rather than restated: the two LEDs above ask it, and so does
+ * `bulkWrite` (SPEC.md 5.8), whose own documentation is explicit that its three
+ * callers must not each carry a list of their own. Two encodings of the same
+ * six addresses — one derived, one written out — is precisely the bug that
+ * exclusion exists to prevent, arriving by another door.
+ */
+export function isComparable(address: number): boolean {
+  return !OUTSIDE_COMPARISON.has(address);
+}
+
+/**
  * Whether this address now differs from the bank as it was loaded — the amber
  * LED of SPEC.md 7.3, and the plate's edited count.
  *
@@ -99,8 +119,77 @@ const OUTSIDE_COMPARISON: ReadonlySet<number> = new Set([
  */
 export function isEdited(state: ParametersState, address: number): boolean {
   if (!state.values || !state.stored) return false;
-  if (OUTSIDE_COMPARISON.has(address)) return false;
+  if (!isComparable(address)) return false;
   return state.values[address] !== state.stored[address];
+}
+
+/**
+ * Whether this address now differs from the value `parameters.json` declares —
+ * the blue LED of SPEC.md 7.3.
+ *
+ * The second magnification, and it answers a different question from the amber
+ * one: amber says "you will lose this if you walk away", blue says "this sound
+ * is not the factory sound". They are independent — a saved bank is amber-dark
+ * and blue-lit all over.
+ *
+ * The same five slots plus the firmware version are excluded, for the same
+ * reason: the store holds a fiction there, and the fiction is nobody's factory
+ * default.
+ */
+export function differsFromDefault(
+  state: ParametersState,
+  address: number,
+): boolean {
+  if (!state.values) return false;
+  if (!isComparable(address)) return false;
+
+  const parameter = PARAMETER_AT.get(address);
+  if (!parameter) return false;
+  return state.values[address] !== defaultWire(parameter);
+}
+
+/**
+ * The 189 parameters a panel draws, by address.
+ *
+ * `visibleParameters` is deliberately the source rather than every address of
+ * the manifest: the six hidden ones are exactly the six excluded above — the
+ * five physical knobs and the firmware version — so the edit buffer never has
+ * to subtract them a second time, and the five get the dock's one line rather
+ * than a row of their own (SPEC.md 7.3).
+ */
+const PARAMETER_AT: ReadonlyMap<number, Parameter> = new Map(
+  visibleParameters.map((parameter) => [parameter.address, parameter]),
+);
+
+/** One row of the dock: what it was when the bank loaded, and what it is now. */
+export interface EditedParameter {
+  readonly parameter: Parameter;
+  readonly stored: number;
+  readonly current: number;
+}
+
+/**
+ * Every parameter that differs from the loaded reference, in panel order — the
+ * dock's whole model, and the count SPEC.md 10.5 reports on a bank change.
+ *
+ * It is one selector rather than a list built in the dock because the same
+ * answer is the plate's count, the strip's loss notice and the map the
+ * revert-all hands to `bulkWrite`: three readers of one fact.
+ */
+export function editBuffer(state: ParametersState): readonly EditedParameter[] {
+  const { values, stored } = state;
+  if (!values || !stored) return [];
+
+  const edited: EditedParameter[] = [];
+  for (const parameter of visibleParameters) {
+    if (!isEdited(state, parameter.address)) continue;
+    edited.push({
+      parameter,
+      stored: stored[parameter.address],
+      current: values[parameter.address],
+    });
+  }
+  return edited;
 }
 
 /**

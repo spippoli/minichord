@@ -1,0 +1,37 @@
+/*
+ * The two state LEDs (SPEC.md 7.3). They keep their place lit or dark: a pair
+ * that appears and disappears moves whatever sits beside it on every edit, and
+ * a dense plate of ten controls would then twitch line by line.
+ *
+ * The colours are tokens from the panel root (SPEC.md 7.4). The blue is the
+ * constraint recorded there: it sits next to the amber, so neither may follow
+ * the bank hue.
+ */
+
+.leds {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.led {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--led-dark);
+}
+
+.ledEdited {
+  composes: led;
+}
+
+.ledEdited[data-lit] {
+  background: var(--led-edited);
+}
+
+.ledOffDefault {
+  composes: led;
+}
+
+.ledOffDefault[data-lit] {
+  background: var(--led-off-default);
+}

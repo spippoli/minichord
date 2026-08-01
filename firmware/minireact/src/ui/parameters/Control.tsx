@@ -22,6 +22,7 @@ import { parameterAnchor } from "../panel/focusParameter";
 import { useReadoutChannel } from "../readout/readoutChannel";
 import styles from "./Control.module.css";
 import { ControlDescription } from "./ControlDescription";
+import { StateLeds, type Divergence } from "./StateLeds";
 import {
   Fader,
   Menu,
@@ -78,6 +79,8 @@ export type ControlProps = {
   description: ParameterDescription;
   /** The device is older than the parameter: the slot stays, empty. */
   unequipped: boolean;
+  /** The two LEDs, read once by the binding and never composed here. */
+  divergence: Divergence;
   onChange: (value: number) => void;
   onPointerDown: () => void;
   onPointerUp: () => void;
@@ -88,6 +91,7 @@ export function Control({
   value,
   description,
   unequipped,
+  divergence,
   onChange,
   onPointerDown,
   onPointerUp,
@@ -223,6 +227,8 @@ export function Control({
       <label id={labelId} className={styles.name} htmlFor={bodyId}>
         {parameter.name}
       </label>
+      <StateLeds divergence={divergence} className={styles.leds} />
+
       <span className={styles.address} aria-hidden="true">
         {parameter.address}
       </span>

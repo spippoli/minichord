@@ -1,5 +1,5 @@
 import { describeParameter, isAvailable, type Parameter } from "../../domain";
-import { firmwareVersion } from "../../state";
+import { differsFromDefault, firmwareVersion, isEdited } from "../../state";
 import { useAppState, useRuntime } from "../runtimeContext";
 import { Control } from "./Control";
 
@@ -30,13 +30,26 @@ export function ParameterBinding({ parameter }: { parameter: Parameter }) {
   if (!values) return null;
 
   const version = firmwareVersion(parameters);
+  // The two LEDs are read once, here, and travel twice: to the control that
+  // lights them and to the one producer of everything the app *says* about a
+  // parameter (SPEC.md 6.1, invariant 5). A control composing that sentence
+  // itself is the invariant being broken.
+  const divergence = {
+    edited: isEdited(parameters, parameter.address),
+    offDefault: differsFromDefault(parameters, parameter.address),
+  };
 
   return (
     <Control
       parameter={parameter}
       value={values[parameter.address]}
       unequipped={!isAvailable(parameter, version)}
-      description={describeParameter(parameter, { firmwareVersion: version })}
+      divergence={divergence}
+      description={describeParameter(parameter, {
+        firmwareVersion: version,
+        changedFromStoredBank: divergence.edited,
+        differsFromDefault: divergence.offDefault,
+      })}
       // Optimism, and its subordination to the connection, are the reducer's:
       // an edit with no wire is refused there, not drawn away here.
       onChange={(value) => runtime.setParameter(parameter.address, value)}

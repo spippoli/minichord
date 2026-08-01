@@ -67,6 +67,7 @@ function harness(
       supported: true,
       probeTimeoutMs: 25,
       dumpRetryMs: 50,
+      bulkDumpTimeoutMs: 200,
       scheduleFlush: (flush) => {
         pendingFrame = flush;
         return () => {
@@ -310,6 +311,96 @@ describe("mid-session (SPEC.md 9.4, 9.5)", () => {
     h.simulator.reconnect();
     await until(() => statusOf(h.runtime) === "connected");
     expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+});
+
+describe("the bulk write, through the wire (SPEC.md 5.8)", () => {
+  it("lands every address and confirms it with a dump", async () => {
+    const h = harness();
+    await connect(h);
+
+    const result = await h.runtime.bulkWrite(
+      new Map([
+        [40, 3],
+        [41, 900],
+      ]),
+    );
+
+    expect(result).toEqual({ applied: 2, diverged: [] });
+    // The confirming dump overruled the store, so the panel is showing what the
+    // device holds and not what the caller hoped for (SPEC.md 5.3).
+    const { values } = h.runtime.getState().parameters;
+    expect(values?.[40]).toBe(3);
+    expect(values?.[41]).toBe(900);
+  });
+
+  it("goes out without waiting for a frame", async () => {
+    // The coalescing queue exists to keep a 1000 Hz mouse off the wire; a bulk
+    // write is distinct addresses that would each survive it anyway. No frame
+    // is run here, and the write still lands.
+    const h = harness();
+    await connect(h);
+
+    await h.runtime.bulkWrite(new Map([[40, 5]]));
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(5);
+  });
+
+  it("drains a queued write first, so the frame cannot land on top of it", async () => {
+    // A slider let go in the same frame as the click leaves a value waiting for
+    // its frame. Jumping that queue would put the bulk write on the wire first
+    // and the stale value after it, re-applying exactly what was reverted.
+    const h = harness();
+    await connect(h);
+
+    h.runtime.setParameter(40, 111);
+    // The frame is deliberately *not* run: the write is still in the queue.
+    const result = await h.runtime.bulkWrite(new Map([[40, 222]]));
+
+    expect(result).toEqual({ applied: 1, diverged: [] });
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(222);
+
+    // And the queue is empty rather than merely late. This has to be asked of
+    // the device: a stale flush reaches the wire with no dump behind it, so the
+    // store would go on showing 222 while the minichord held 111.
+    h.frame();
+    expect(h.simulator.device.snapshot()[40]).toBe(222);
+  });
+
+  it("does not take a dump from another bank as its answer", async () => {
+    // The preset buttons reload the device from flash and it announces the new
+    // bank unprompted (SPEC.md 1.3). That dump says nothing about the writes
+    // just sent, and taking it would report every address as diverged and then
+    // re-send the old bank's values over the new one.
+    const h = harness();
+    await connect(h);
+
+    // Pressed and then written to in the same tick: the announcement is on its
+    // way while the store still holds bank 0, so it reaches the waiter ahead of
+    // the dump the write asked for.
+    h.simulator.pressPresetButton(1);
+    const result = await h.runtime.bulkWrite(new Map([[40, 7]]));
+
+    // The bank moved under the write, so nothing it sent was ever confirmed:
+    // the window closes on a count of zero rather than on the wrong dump.
+    expect(result).toEqual({ applied: 0, diverged: [40] });
+    // The store took the announcement all the same — that path is the
+    // reducer's, and it is not what the bulk write was waiting for.
+    expect(h.runtime.getState().parameters.values?.[BANK_ADDRESS]).toBe(1);
+  });
+
+  it("writes nothing with no wire, and says everything is unconfirmed", async () => {
+    const h = harness();
+    await connect(h);
+    const before = h.runtime.getState().parameters.values?.[40];
+
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+
+    // The reducer refuses single edits while the connection is interrupted; a
+    // bulk write going around that would be the one lie the rule prevents.
+    const result = await h.runtime.bulkWrite(new Map([[40, 999]]));
+    expect(result).toEqual({ applied: 0, diverged: [40] });
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(before);
   });
 });
 

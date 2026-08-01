@@ -91,6 +91,18 @@
   --led: #f0b429;
   --led-ink: #1a1206;
   --led-bezel: #0a0c0e;
+  /*
+   * The two state LEDs of SPEC.md 7.3: amber for "differs from what is stored
+   * in the bank", blue for "differs from the factory default", and one unlit
+   * body for both.
+   *
+   * This pair is the reason SPEC.md 7.4 keeps the bank hue off everything but
+   * the strip: two LEDs side by side, the second of them blue, stop being
+   * readable at around hue 220 — and bank 7 ships at 220.
+   */
+  --led-edited: #ffb020;
+  --led-off-default: #6fa8ff;
+  --led-dark: #ffffff1f;
   --pad: #1e2228;
   --pad-edge: #3f4652;
   --pad-on: #6fe39b;
@@ -177,6 +189,9 @@
   --led: #a8541a;
   --led-ink: #fdf6e8;
   --led-bezel: #8f866f;
+  --led-edited: #a35c00;
+  --led-off-default: #1f4fbf;
+  --led-dark: #00000024;
   --pad: #d5cfbd;
   --pad-edge: #a59b83;
   --pad-on: #3c5c2e;

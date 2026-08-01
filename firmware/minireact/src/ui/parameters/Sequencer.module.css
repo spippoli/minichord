@@ -29,10 +29,17 @@
   grid-column: 1;
 }
 
+/*
+ * The step number, and under it the column's two state LEDs (SPEC.md 7.3). The
+ * pair keeps its place lit or dark, so the numbers do not shift on an edit.
+ */
 .stepHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
   font-size: 0.7rem;
   font-variant-numeric: tabular-nums;
-  text-align: center;
   color: var(--silkscreen-dim);
 }
 
