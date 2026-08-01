@@ -52,14 +52,14 @@ export function stripNotice(state: AppState): string | null {
       // Nothing lost is not a smaller version of the loss line: it is the good
       // news the loss line would otherwise be mistaken for, said plainly.
       if (notice.lost === 0) return `Reconnected — bank ${bank}.`;
-      return `Reconnected on bank ${bank}. The minichord restarted and reloaded from flash, so ${unsavedChanges(notice.lost)} gone.`;
+      return `Reconnected on bank ${bank}. The minichord restarted and reloaded from flash, so ${unsavedChanges(notice.lost)} ${notice.lost === 1 ? "is" : "are"} gone.`;
     }
 
     // A bank change only ever speaks about what it cost: the store raises this
     // with nothing lost never at all, because the number and the hue beside
     // this line have already said that the bank changed (SPEC.md 10.5).
     case "bank-changed":
-      return `Bank ${bankNumber(notice.bank)} loaded — ${unsavedChangesLost(notice.lost)}.`;
+      return `Bank ${bankNumber(notice.bank)} loaded — ${unsavedChanges(notice.lost)} lost.`;
 
     // The acknowledgement a ~165 ms round trip is owed (SPEC.md 10.2), and the
     // only one there is: a save asks nothing before acting, so this line is the
@@ -78,14 +78,11 @@ export function stripNotice(state: AppState): string | null {
 /**
  * `{k}` is always a count, and the singular is spelled out (SPEC.md A.3).
  *
- * "1 unsaved changes are gone" is the kind of thing a machine says, in the one
- * line whose whole job is to be believed about something that was just lost.
+ * "1 unsaved changes are gone" is the kind of thing a machine says, in the two
+ * lines whose whole job is to be believed about something that was just lost.
+ * One function for both of them: the rule is about the count, and written twice
+ * it would be the kind of thing that gets fixed in one place.
  */
 function unsavedChanges(k: number): string {
-  return k === 1 ? "1 unsaved change is" : `${k} unsaved changes are`;
-}
-
-/** The same count, in the sentence a bank change makes of it (SPEC.md A.3). */
-function unsavedChangesLost(k: number): string {
-  return k === 1 ? "1 unsaved change lost" : `${k} unsaved changes lost`;
+  return k === 1 ? "1 unsaved change" : `${k} unsaved changes`;
 }

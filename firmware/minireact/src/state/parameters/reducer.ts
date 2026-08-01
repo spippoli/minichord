@@ -422,9 +422,24 @@ export function parametersReducer(
             command: event.command,
             bank: state.values[BANK_ADDRESS],
           },
+          { type: "schedule-command-timeout" },
         ],
       };
     }
+
+    case "command-timeout":
+      // The device did not answer inside the window. The flag goes, and with it
+      // the disabled row: the alternative is a save the wire dropped leaving
+      // the two buttons dead for the rest of the session.
+      //
+      // **What is given up is stated rather than repaired**: a dump arriving
+      // after the window will not capture the reference, so the amber LEDs will
+      // claim edits against a bank that has them. That is the same bargain the
+      // bulk write already makes with its own window (SPEC.md 1.6), and it is
+      // the recoverable side of the two — one more save fixes it, while a dead
+      // button is fixed only by a replug.
+      if (state.pendingCommand === null) return { state, effects: [] };
+      return { state: { ...state, pendingCommand: null }, effects: [] };
 
     case "edit": {
       if (connection.status !== "connected" || !state.values) {

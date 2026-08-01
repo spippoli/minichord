@@ -723,3 +723,45 @@ describe("what the strip is owed after a command (SPEC.md 10.5, A.3)", () => {
     ).toEqual([]);
   });
 });
+
+describe("a command the device never answers (SPEC.md 10.2)", () => {
+  function issued(): ParametersState {
+    return apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      dumped(),
+    ).state;
+  }
+
+  it("asks for a window when it issues one", () => {
+    const { effects } = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      dumped(),
+    );
+    expect(effects).toContainEqual({ type: "schedule-command-timeout" });
+  });
+
+  it("drops the flag when the window runs out", () => {
+    // A dump the wire dropped would otherwise leave the editing row disabled
+    // for the rest of the session — a modal progress state by accident.
+    const state = apply(
+      { type: "command-timeout" },
+      "connected",
+      issued(),
+    ).state;
+    expect(state.pendingCommand).toBeNull();
+  });
+
+  it("is inert once the answer has arrived", () => {
+    const answered = apply(
+      { type: "dump", values: identityDump() },
+      "connected",
+      issued(),
+    ).state;
+    // The timer still fires: it must change nothing, and above all it must not
+    // take back the notice the dump left.
+    const after = apply({ type: "command-timeout" }, "connected", answered);
+    expect(after.state).toBe(answered);
+  });
+});

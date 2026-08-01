@@ -63,6 +63,8 @@ export type AppEvent =
    * by the component that draws the button.
    */
   | { type: "bank-command"; command: BankCommand }
+  /** The window a flash command was given ran out with no dump in it. */
+  | { type: "command-timeout" }
   /** A pointer went down on a control: that address is now held (SPEC.md 5.3). */
   | { type: "pointer-down"; address: number }
   /** The pointer came up. There is only ever one, so it carries no address. */

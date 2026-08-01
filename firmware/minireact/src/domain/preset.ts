@@ -8,6 +8,8 @@
  * and it lands with the ticket that raises it.
  */
 
+import { byAddress } from "./parameters";
+
 /**
  * **255 values, not 256** (SPEC.md 11.1).
  *
@@ -26,10 +28,25 @@ export const PRESET_VALUE_COUNT = 255;
  * exponential curve are the display's business (SPEC.md 4.3), and a code that
  * carried decoded values would be unreadable to the legacy editor.
  *
- * Nothing is excluded, not the bank id and not the bank hue: a preset code is a
- * bank, and the hue is the bank's identity (SPEC.md 7.4).
+ * **Addresses no parameter claims serialise as `0`**, exactly as the legacy
+ * does (SPEC.md 11.1): the same sound then produces the same code, comparable
+ * and diffable against published ones, and no undeclared device state leaks
+ * into a public string. That covers the bank id at address 1, which is why
+ * every published code begins `0;0;` — the code *is* a bank, so which bank it
+ * came out of is not part of it.
+ *
+ * The fiction of SPEC.md 5.4 does travel, because 2–7 are declared parameters
+ * and the store holds values there: published codes begin
+ * `0;0;50;50;512;512;512;0`, which is the fiction exactly. Only byte 7 differs
+ * — we send the firmware version the device reported rather than the legacy's
+ * 0 — and it is inert whatever it says, because the firmware heals that slot on
+ * every write (SPEC.md 1.5).
+ *
+ * The bank hue is declared, so it travels (SPEC.md 7.4).
  */
 export function encodePreset(values: readonly number[]): string {
-  const fields = values.slice(0, PRESET_VALUE_COUNT);
+  const fields = Array.from({ length: PRESET_VALUE_COUNT }, (_, address) =>
+    byAddress.has(address) ? values[address] : 0,
+  );
   return btoa(`${fields.join(";")};`);
 }

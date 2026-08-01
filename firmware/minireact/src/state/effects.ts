@@ -45,4 +45,13 @@ export type Effect =
    * be a save into a bank nobody named. A wipe carries it too and ignores it;
    * the argument of command 1 is ignored by the firmware.
    */
-  | { type: "device-command"; command: BankCommand; bank: number };
+  | { type: "device-command"; command: BankCommand; bank: number }
+  /**
+   * Give the command a window, past which it is treated as unanswered.
+   *
+   * The flag it raises is what disables the row while a ~165 ms round trip is
+   * in flight, and a dump the wire dropped would otherwise leave that row dead
+   * for the rest of the session with nothing but a replug to clear it — a
+   * modal progress state by accident, which SPEC.md 10.2 rules out on purpose.
+   */
+  | { type: "schedule-command-timeout" };
