@@ -59,24 +59,14 @@ nothing is missing.
 ### Glossary
 
 The document is ordered so that the `ui/` invariants (§6) arrive before the surfaces they govern.
-That costs a handful of forward references, and this table absorbs them.
+That costs a handful of forward references, and the glossary absorbs them.
 
-| term           | meaning                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| **address**    | one of the 256 SysEx slots that make up the whole device state                                       |
-| **parameter**  | one record of `firmware/generator/parameters.json`, owning one address                               |
-| **section**    | one of the three top-level partitions: global, harp, chord                                           |
-| **plate**      | one collapsible card holding one `group` of parameters within a section                              |
-| **kind**       | which widget a parameter is drawn as: `toggle`, `select`, `stepper`, `slider`, `picker`, `sequencer` |
-| **control**    | the on-screen thing that edits one parameter, whatever its kind                                      |
-| **binding**    | the one component per parameter that reads the store and feeds the control                           |
-| **readout**    | the single strip in the panel header that explains the control under the pointer or focus            |
-| **strip**      | the single top-bar line where the app speaks about the device                                        |
-| **gate**       | the connection screen shown before the first dump                                                    |
-| **dock**       | the edit buffer: the list of everything changed since the bank was loaded                            |
-| **sequencer**  | the rhythm grid at addresses 220–235, sixteen steps by seven bits                                    |
-| **wire value** | the integer actually carried by SysEx, before any `/100` or curve is applied                         |
-| **dump**       | the device's report of all 256 values                                                                |
+**The glossary is [`CONTEXT.md`](../../CONTEXT.md) at the repository root**, which defines every
+term this document uses — `address`, `parameter`, `section`, `group`, `plate`, `kind`, `control`,
+`binding`, `picker`, `readout`, `strip`, `gate`, `dock`, `sequencer`, `wire value`, `position`,
+`dump`, `bank`, `reference`, `divergence` and the two species it covers, `fiction address`,
+`moulding`, and the rest. It carries no definition of its own for a second time: read it first, and
+keep its `_Avoid_` lists when naming things here or in code.
 
 ### Language and scope reminders
 
