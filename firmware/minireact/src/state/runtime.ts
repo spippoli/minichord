@@ -27,6 +27,9 @@ export type RuntimeTransport = {
   bind(port: PortRef): void;
   requestDump(): boolean;
   sendParameter(address: number, rawValue: number): boolean;
+  saveToBank(bank: number): boolean;
+  resetBank(bank: number): boolean;
+  wipeMemory(): boolean;
   subscribe(listener: (event: TransportEvent) => void): Unsubscribe;
   onPortsChanged(listener: () => void): Unsubscribe;
 };
@@ -191,6 +194,28 @@ export class Runtime {
   }
 
   /**
+   * Commit the live state to the bank the device is in (SPEC.md 10.2).
+   *
+   * No argument, and that is the design: the firmware's `save_config` sets the
+   * current bank before reloading, so any target other than the current one
+   * would move the user through the destructive door. The bank is the store's
+   * to read (see the reducer), not the caller's to name.
+   */
+  saveBank(): void {
+    this.dispatch({ type: "bank-command", command: "save" });
+  }
+
+  /** Reset the current bank to the factory sound. Irreversible (SPEC.md 10.4). */
+  resetBank(): void {
+    this.dispatch({ type: "bank-command", command: "reset" });
+  }
+
+  /** Reset all twelve banks. The maintenance gesture of SPEC.md 10.6. */
+  wipeMemory(): void {
+    this.dispatch({ type: "bank-command", command: "wipe" });
+  }
+
+  /**
    * A pointer went down on a control. Until it comes up, that address is the
    * one thing a dump may not overrule (SPEC.md 5.3).
    */
@@ -352,6 +377,22 @@ export class Runtime {
       case "flush-writes":
         this.cancelPendingFlush();
         this.flushWrites();
+        return;
+
+      case "device-command":
+        // Nothing waits for the answer: the device confirms all three with an
+        // unsolicited dump (SPEC.md 1.3), which arrives by the one door every
+        // dump arrives by and is consumed by the flag the reducer raised.
+        switch (effect.command) {
+          case "save":
+            this.transport.saveToBank(effect.bank);
+            return;
+          case "reset":
+            this.transport.resetBank(effect.bank);
+            return;
+          case "wipe":
+            this.transport.wipeMemory();
+        }
     }
   }
 

@@ -1,0 +1,106 @@
+/*
+ * The bank row and the maintenance area (SPEC.md 10.4, 10.6).
+ *
+ * Both are cast in the moulding like everything else: every value here comes
+ * from a token declared on the panel root, and neither says anything about the
+ * plastic or the silkscreen it inherits (SPEC.md 7.4). The bank hue is not
+ * among them — it reaches exactly one element, the LED in the strip, and a
+ * destructive button tinted with the bank's identity would be a second reader
+ * of a colour that means "which bank", not "what this does".
+ */
+
+/* The editing row: the two things you can do to the bank you are standing in. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0;
+}
+
+/* A key, like every other thing on the panel you press. */
+.key {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--key-edge);
+  border-top-color: var(--edge-light);
+  font: inherit;
+  font-size: 0.85rem;
+  background: var(--key);
+  color: var(--key-ink);
+  cursor: pointer;
+}
+
+.key:active,
+/* An armed reset is a key held down: the question is visibly in progress, and
+   the shape says so before the sentence is read. */
+.key[data-armed="true"] {
+  border-color: var(--key-active-edge);
+  background: var(--key-active);
+  color: var(--key-active-ink);
+}
+
+.key:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/*
+ * The escape hatch reads as a link, not as a third key: it is optional, and a
+ * key beside an armed destructive one invites the wrong finger.
+ */
+.hatch {
+  padding: 0;
+  border: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.copied {
+  font-size: 0.8rem;
+  color: var(--silkscreen-dim);
+}
+
+/*
+ * The maintenance area sits at the foot of the panel, after the dock: away from
+ * the editing row is a distance in the page, not a different colour.
+ */
+.maintenance {
+  margin-top: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--edge-plate);
+  border-top-color: var(--edge-light);
+  background: var(--plastic-plate);
+}
+
+.maintenanceHeading {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.maintenanceBody {
+  margin: 0.4rem 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.maintenanceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The field is a window, cast like every other place text is typed. */
+.field {
+  width: 6rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--window-edge);
+  font: inherit;
+  font-size: 0.85rem;
+  background: var(--window);
+  color: var(--window-ink);
+  box-shadow: var(--window-glow);
+}

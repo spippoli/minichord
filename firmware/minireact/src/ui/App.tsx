@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { BANK_COLOR_ADDRESS } from "../domain";
 import { isGateStatus } from "../state";
+import { BankActions } from "./banks/BankActions";
 import { Gate } from "./Gate";
 import styles from "./App.module.css";
 import "./moulding/moulding.css";
@@ -46,6 +47,12 @@ export function App() {
       <ReadoutProvider>
         <Strip />
         <Readout />
+        {/*
+          The editing row stands between the two channels and the workbench:
+          what it commits is the whole panel below it, and the maintenance area
+          it must be away from is at the far end of that panel (SPEC.md 10.6).
+        */}
+        <BankActions />
         <Panel />
       </ReadoutProvider>
     </PanelRoot>

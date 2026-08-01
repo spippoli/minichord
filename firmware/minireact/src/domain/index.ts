@@ -22,6 +22,8 @@ export {
   visibleParameters,
 } from "./parameters";
 
+export { PRESET_VALUE_COUNT, encodePreset } from "./preset";
+
 export type { ControlKind } from "./kind";
 export { kindOf } from "./kind";
 

@@ -17,9 +17,8 @@ import { firmwareVersion, type AppState } from "../state";
  * and SPEC.md 9.6 puts the firmware version in the strip precisely because it
  * is the only explanation for an unequipped slot.
  *
- * The notices this file does not yet produce — a bank change, a save, a preset
- * import — arrive with the tickets that raise them, as further cases of the
- * one this returns.
+ * The one notice this file does not yet produce — the preset import — arrives
+ * with the ticket that raises it, as a further case of the ones below.
  */
 
 /** SPEC.md A.3: the wire is gone, and the edits are on screen and stuck there. */
@@ -47,11 +46,33 @@ export function stripNotice(state: AppState): string | null {
   const notice = state.parameters.lastLossNotice;
   if (!notice || state.connection.status === "interrupted") return null;
 
-  const bank = bankNumber(notice.bank);
-  // Nothing lost is not a smaller version of the loss line: it is the good news
-  // the loss line would otherwise be mistaken for, said plainly.
-  if (notice.lost === 0) return `Reconnected — bank ${bank}.`;
-  return `Reconnected on bank ${bank}. The minichord restarted and reloaded from flash, so ${unsavedChanges(notice.lost)} gone.`;
+  switch (notice.kind) {
+    case "reconnected": {
+      const bank = bankNumber(notice.bank);
+      // Nothing lost is not a smaller version of the loss line: it is the good
+      // news the loss line would otherwise be mistaken for, said plainly.
+      if (notice.lost === 0) return `Reconnected — bank ${bank}.`;
+      return `Reconnected on bank ${bank}. The minichord restarted and reloaded from flash, so ${unsavedChanges(notice.lost)} gone.`;
+    }
+
+    // A bank change only ever speaks about what it cost: the store raises this
+    // with nothing lost never at all, because the number and the hue beside
+    // this line have already said that the bank changed (SPEC.md 10.5).
+    case "bank-changed":
+      return `Bank ${bankNumber(notice.bank)} loaded — ${unsavedChangesLost(notice.lost)}.`;
+
+    // The acknowledgement a ~165 ms round trip is owed (SPEC.md 10.2), and the
+    // only one there is: a save asks nothing before acting, so this line is the
+    // whole of the conversation.
+    case "saved":
+      return `Saved to bank ${bankNumber(notice.bank)}.`;
+
+    case "reset":
+      return `Bank ${bankNumber(notice.bank)} reset to factory.`;
+
+    case "wiped":
+      return "All banks reset to factory.";
+  }
 }
 
 /**
@@ -62,4 +83,9 @@ export function stripNotice(state: AppState): string | null {
  */
 function unsavedChanges(k: number): string {
   return k === 1 ? "1 unsaved change is" : `${k} unsaved changes are`;
+}
+
+/** The same count, in the sentence a bank change makes of it (SPEC.md A.3). */
+function unsavedChangesLost(k: number): string {
+  return k === 1 ? "1 unsaved change lost" : `${k} unsaved changes lost`;
 }

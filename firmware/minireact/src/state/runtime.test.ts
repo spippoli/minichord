@@ -380,7 +380,10 @@ describe("mid-session (SPEC.md 9.4, 9.5)", () => {
     await until(() => statusOf(h.runtime) === "connected");
 
     const { parameters } = h.runtime.getState();
-    expect(parameters.lastLossNotice?.lost).toBe(0);
+    expect(parameters.lastLossNotice).toMatchObject({
+      kind: "reconnected",
+      lost: 0,
+    });
     expect(parameters.values?.[40]).toBe(stored + 3);
     expect(editBuffer(parameters)).toHaveLength(1);
   });
@@ -499,6 +502,9 @@ describe("the probe window (SPEC.md 9.3)", () => {
       bind: () => {},
       requestDump: () => true,
       sendParameter: () => true,
+      saveToBank: () => true,
+      resetBank: () => true,
+      wipeMemory: () => true,
       subscribe: () => noop,
       onPortsChanged: () => noop,
     };
@@ -549,6 +555,9 @@ describe("the one-second retry (SPEC.md 5.9)", () => {
         return true;
       },
       sendParameter: () => true,
+      saveToBank: () => true,
+      resetBank: () => true,
+      wipeMemory: () => true,
       subscribe: (cb) => {
         listener = cb;
         return noop;
@@ -730,5 +739,99 @@ describe("the write policy (SPEC.md 5.7)", () => {
     h.frame();
 
     expect(sent).toEqual([]);
+  });
+});
+
+describe("banks and persistence, through the wire (SPEC.md 10)", () => {
+  it("saves the live state into the current bank and says so", async () => {
+    const h = harness();
+    await connect(h);
+    const bank = h.runtime.getState().parameters.values?.[BANK_ADDRESS];
+
+    h.runtime.setParameter(40, 999);
+    h.frame();
+    h.runtime.saveBank();
+
+    // The device confirms with a dump of its own initiative, which is what
+    // consumes the flag and captures the reference (SPEC.md 10.3).
+    await until(() => h.runtime.getState().parameters.lastLossNotice !== null);
+    const { parameters } = h.runtime.getState();
+    expect(parameters.lastLossNotice).toEqual({ kind: "saved", bank });
+    expect(parameters.pendingCommand).toBeNull();
+    expect(parameters.values?.[40]).toBe(999);
+    // The amber LEDs are dark: what is on screen is what is in the bank.
+    expect(editBuffer(parameters)).toEqual([]);
+  });
+
+  it("resets the bank to factory and re-baselines on what comes back", async () => {
+    const h = harness();
+    await connect(h);
+    const before = h.runtime.getState().parameters.values?.[40];
+
+    h.runtime.setParameter(40, 999);
+    h.frame();
+    h.runtime.resetBank();
+    await until(() => h.runtime.getState().parameters.lastLossNotice !== null);
+
+    const { parameters } = h.runtime.getState();
+    expect(parameters.lastLossNotice).toMatchObject({ kind: "reset" });
+    expect(parameters.values?.[40]).toBe(before);
+    expect(editBuffer(parameters)).toEqual([]);
+  });
+
+  it("wipes every bank and names none of them", async () => {
+    const h = harness();
+    await connect(h);
+    h.runtime.setParameter(40, 999);
+    h.frame();
+    h.runtime.wipeMemory();
+
+    await until(() => h.runtime.getState().parameters.lastLossNotice !== null);
+    expect(h.runtime.getState().parameters.lastLossNotice).toEqual({
+      kind: "wiped",
+    });
+  });
+
+  it("states what a press of the physical buttons cost", async () => {
+    const h = harness();
+    await connect(h);
+    h.runtime.setParameter(40, 999);
+    h.frame();
+
+    // The only way to change bank at all: the app never offers one (SPEC.md
+    // 10.1), and the dump arrives unannounced.
+    h.simulator.pressPresetButton(1);
+    await until(() => h.runtime.getState().parameters.lastLossNotice !== null);
+
+    expect(h.runtime.getState().parameters.lastLossNotice).toEqual({
+      kind: "bank-changed",
+      bank: 1,
+      lost: 1,
+    });
+  });
+
+  it("does not commit a value still waiting for its frame", async () => {
+    const h = harness();
+    await connect(h);
+
+    // No `h.frame()`: the write is coalesced and has not reached the wire.
+    h.runtime.setParameter(40, 999);
+    h.runtime.saveBank();
+    await until(() => h.runtime.getState().parameters.lastLossNotice !== null);
+
+    // The save flushed it first, so the bank holds it rather than the value
+    // the device happened to have when the button was clicked.
+    expect(h.runtime.getState().parameters.values?.[40]).toBe(999);
+    expect(editBuffer(h.runtime.getState().parameters)).toEqual([]);
+  });
+
+  it("sends nothing at all with no wire", async () => {
+    const h = harness();
+    await connect(h);
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+
+    h.runtime.saveBank();
+    expect(h.runtime.getState().parameters.pendingCommand).toBeNull();
   });
 });

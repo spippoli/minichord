@@ -8,7 +8,7 @@ import {
 import { PARAMETER_COUNT } from "../../transport";
 import type { ConnectionStatus } from "../connection/reducer";
 import type { Effect } from "../effects";
-import type { AppEvent } from "../events";
+import type { AppEvent, BankCommand } from "../events";
 
 /**
  * The 256 raw wire integers, undecoded.
@@ -42,10 +42,29 @@ export type ParametersState = {
    * apart by what caused them, never by inspecting them, so the reference is
    * captured on exactly three events: the session's first dump, a dump whose
    * bank id differs from the store's, and a dump following a save or a reset we
-   * issued. **The third is not here yet** — it needs the flag a save raises,
-   * which arrives with the banks; the first two need nothing but this slice.
+   * issued — the third being `pendingCommand` below.
    */
   readonly stored: readonly number[] | null;
+  /**
+   * The flash command we issued and the device has not answered yet, or `null`.
+   *
+   * The third capture case of SPEC.md 10.3, and it is one field: **issuing a
+   * save or a reset raises this, and the next dump consumes it** — captures the
+   * reference and clears it. The alternative an implementer reaches for without
+   * it is inspecting the incoming dump to guess where it came from, which is
+   * the one thing SPEC.md 10.3 has established cannot be done.
+   *
+   * A wipe raises it too. It is not named in the acceptance of the ticket, and
+   * it must: a wipe reloads the current bank out of freshly-factory flash, so a
+   * reference left standing would light every amber LED in the panel against a
+   * bank that no longer exists anywhere.
+   *
+   * It also carries *which* command, because the line the strip owes afterwards
+   * differs by command and the dump cannot say which one it is closing. The
+   * flag is here rather than in `connection` because a save is not a connection
+   * event, and the one edge between the slices runs the other way (SPEC.md 5.5).
+   */
+  readonly pendingCommand: BankCommand | null;
   /**
    * What the strip has to say about the last dump, or `null`.
    *
@@ -73,19 +92,41 @@ export type ParametersState = {
  * of these, because what the strip owes the user about a return is one line
  * either way.
  */
-export type StripNotice = {
+export type StripNotice =
   /** The device came back after an interruption (SPEC.md 9.5). */
-  readonly kind: "reconnected";
-  /** The raw value at address 1 in the dump that came back. */
-  readonly bank: number;
-  /** How many unsaved changes did not survive. Zero says nothing was lost. */
-  readonly lost: number;
-};
+  | {
+      readonly kind: "reconnected";
+      /** The raw value at address 1 in the dump that came back. */
+      readonly bank: number;
+      /** How many unsaved changes did not survive. Zero says nothing was lost. */
+      readonly lost: number;
+    }
+  /**
+   * A physical preset button was pressed and the work was not saved first
+   * (SPEC.md 10.5).
+   *
+   * Only ever raised with something lost: a clean switch says nothing, because
+   * the bank number and the hue have already changed in that same strip and
+   * speak for themselves. The count is the dock count in the instant before the
+   * dump, which is the whole of what the press threw away.
+   */
+  | {
+      readonly kind: "bank-changed";
+      readonly bank: number;
+      readonly lost: number;
+    }
+  /** A save we issued came back (SPEC.md 10.2): ~165 ms, acknowledged once. */
+  | { readonly kind: "saved"; readonly bank: number }
+  /** A bank reset we issued came back. */
+  | { readonly kind: "reset"; readonly bank: number }
+  /** A memory wipe we issued came back. It names no bank: it took all twelve. */
+  | { readonly kind: "wiped" };
 
 export const initialParametersState: ParametersState = {
   values: null,
   held: null,
   stored: null,
+  pendingCommand: null,
   lastLossNotice: null,
 };
 
@@ -299,16 +340,35 @@ export type ConnectionView = {
  * is: whether the values came back changed. That is a comparison of the dump
  * against the store, which is the same question SPEC.md 5.3 already asks.
  */
-function reconnectionNotice(
+function noticeFor(
   state: ParametersState,
   values: readonly number[],
   connection: ConnectionView,
+  bankChanged: boolean,
 ): StripNotice | null {
-  if (connection.before !== "interrupted") return null;
-  const lost = editBuffer(state).filter(
-    (row) => row.current !== values[row.parameter.address],
-  ).length;
-  return { kind: "reconnected", bank: values[BANK_ADDRESS], lost };
+  if (connection.before === "interrupted") {
+    const lost = editBuffer(state).filter(
+      (row) => row.current !== values[row.parameter.address],
+    ).length;
+    return { kind: "reconnected", bank: values[BANK_ADDRESS], lost };
+  }
+
+  const bank = values[BANK_ADDRESS];
+  switch (state.pendingCommand) {
+    case "save":
+      return { kind: "saved", bank };
+    case "reset":
+      return { kind: "reset", bank };
+    case "wipe":
+      return { kind: "wiped" };
+  }
+
+  // A bank change we did not cause: the physical buttons, which are the only
+  // way to change bank at all (SPEC.md 10.1). The count is taken from the state
+  // *before* this dump lands, because the dump is what destroys the evidence.
+  if (!bankChanged) return null;
+  const lost = editBuffer(state).length;
+  return lost === 0 ? null : { kind: "bank-changed", bank, lost };
 }
 
 export function parametersReducer(
@@ -319,18 +379,50 @@ export function parametersReducer(
   switch (event.type) {
     case "dump": {
       const values = protectHeld(state, neutralise(event.values));
-      const loaded =
-        state.values === null ||
+      const bankChanged =
+        state.values !== null &&
         state.values[BANK_ADDRESS] !== values[BANK_ADDRESS];
+      // The three capture cases of SPEC.md 10.3, in the order they were
+      // written: the session's first dump, a bank that changed under us, and
+      // the answer to a command we issued.
+      const loaded =
+        state.values === null || bankChanged || state.pendingCommand !== null;
 
       return {
         state: {
           ...state,
           values,
           stored: loaded ? values : state.stored,
-          lastLossNotice: reconnectionNotice(state, values, connection),
+          // Consumed, whatever it was: this dump is the answer, and a flag left
+          // standing would capture a reference off the next unrelated dump.
+          pendingCommand: null,
+          lastLossNotice: noticeFor(state, values, connection, bankChanged),
         },
         effects: [],
+      };
+    }
+
+    case "bank-command": {
+      // The same refusal an edit gets, for the same reason (SPEC.md 5.2): with
+      // no wire the command reaches nothing, and the acknowledgement would be
+      // about a device that never heard it.
+      if (connection.status !== "connected" || !state.values) {
+        return { state, effects: [] };
+      }
+      return {
+        state: { ...state, pendingCommand: event.command },
+        effects: [
+          // What is being saved is what is on screen, and a value still waiting
+          // for its frame (SPEC.md 5.7) is on screen and not yet on the device.
+          // Without this, a control moved in the same frame as the click is
+          // written *after* the save and is exactly the edit that goes missing.
+          { type: "flush-writes" },
+          {
+            type: "device-command",
+            command: event.command,
+            bank: state.values[BANK_ADDRESS],
+          },
+        ],
       };
     }
 
@@ -347,6 +439,16 @@ export function parametersReducer(
         ],
       };
     }
+
+    case "transport-connection":
+      // The wire went before the device answered. A flag carried across the gap
+      // would let the reconnection dump consume it, and the strip would say
+      // "saved" about the reload from flash that is precisely the loss of
+      // SPEC.md 9.5.
+      if (event.connected || state.pendingCommand === null) {
+        return { state, effects: [] };
+      }
+      return { state: { ...state, pendingCommand: null }, effects: [] };
 
     case "pointer-down":
       return { state: { ...state, held: event.address }, effects: [] };
