@@ -40,6 +40,23 @@ function dumped(values = identityDump()): ParametersState {
   return apply({ type: "dump", values }).state;
 }
 
+/**
+ * Connected, standing in a bank, with one unsaved edit at address 40.
+ *
+ * The starting point of nearly everything below — a notice, a reference and a
+ * flash command are all about what an edit is worth — so it is written once
+ * here rather than in each `describe` that wants it.
+ */
+function edited(bank = 1): ParametersState {
+  const base = identityDump();
+  base[BANK_ADDRESS] = bank;
+  return apply(
+    { type: "edit", address: 40, value: 999 },
+    "connected",
+    dumped(base),
+  ).state;
+}
+
 describe("no device, no state (SPEC.md 5.2)", () => {
   it("holds nothing before the first dump", () => {
     expect(initialParametersState.values).toBeNull();
@@ -410,22 +427,15 @@ describe("the divergences the dock lists (SPEC.md 7.3, A.6)", () => {
 });
 
 describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
-  /** Connected, one address edited, then the wire went away. */
-  function edited(): ParametersState {
-    const base = identityDump();
-    base[BANK_ADDRESS] = 0;
-    return apply(
-      { type: "edit", address: 40, value: 999 },
-      "connected",
-      dumped(base),
-    ).state;
-  }
-
   it("says nothing about a dump that did not follow an interruption", () => {
+    // The same bank: a dump answering our own probe, which is the ordinary
+    // case and has nothing to report either way.
+    const same = identityDump();
+    same[BANK_ADDRESS] = 0;
     const { state } = apply(
-      { type: "dump", values: identityDump() },
+      { type: "dump", values: same },
       "connected",
-      edited(),
+      edited(0),
     );
     expect(state.lastLossNotice).toBeNull();
   });
@@ -437,7 +447,7 @@ describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
     const { state } = apply(
       { type: "dump", values: flash },
       "connected",
-      edited(),
+      edited(0),
       "interrupted",
     );
     expect(state.lastLossNotice).toEqual({
@@ -452,7 +462,7 @@ describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
   it("counts nothing when the values came back as they were left", () => {
     // A reseated cable on a device that never rebooted: the edit survived, and
     // a loss line here would be an invented alarm.
-    const before = edited();
+    const before = edited(0);
     const { state } = apply(
       { type: "dump", values: [...before.values!] },
       "connected",
@@ -473,7 +483,7 @@ describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
     const { state } = apply(
       { type: "dump", values: other },
       "connected",
-      edited(),
+      edited(0),
       "interrupted",
     );
     expect(state.lastLossNotice).toEqual({
@@ -488,7 +498,7 @@ describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
     const stated = apply(
       { type: "dump", values: identityDump() },
       "connected",
-      edited(),
+      edited(0),
       "interrupted",
     ).state;
     const later = apply(
@@ -497,5 +507,312 @@ describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
       stated,
     );
     expect(later.state.lastLossNotice).toBeNull();
+  });
+});
+
+describe("the flash commands (SPEC.md 10.2, 10.4)", () => {
+  it("saves into the bank the device is in, and nowhere else", () => {
+    const state = { ...edited() };
+    const values = [...state.values!];
+    values[BANK_ADDRESS] = 6;
+
+    const { effects } = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      { ...state, values },
+    );
+
+    // The bank is read from the store: no caller can name another one.
+    expect(effects).toContainEqual({
+      type: "device-command",
+      command: "save",
+      bank: 6,
+    });
+  });
+
+  it("flushes what is still waiting for its frame before it commits", () => {
+    const { effects } = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      edited(),
+    );
+
+    // A control moved in the same frame as the click is on screen and not yet
+    // on the device; saving first would commit the state without it.
+    expect(effects[0]).toEqual({ type: "flush-writes" });
+    expect(effects[1]).toMatchObject({ type: "device-command" });
+  });
+
+  it("sends the reset and the wipe as themselves", () => {
+    for (const command of ["reset", "wipe"] as const) {
+      const { state, effects } = apply(
+        { type: "bank-command", command },
+        "connected",
+        edited(),
+      );
+      expect(state.pendingCommand).toBe(command);
+      expect(effects).toContainEqual({
+        type: "device-command",
+        command,
+        bank: 1,
+      });
+    }
+  });
+
+  it("refuses all three with no wire, exactly as it refuses an edit", () => {
+    const { state, effects } = apply(
+      { type: "bank-command", command: "save" },
+      "interrupted",
+      edited(),
+    );
+    expect(state.pendingCommand).toBeNull();
+    expect(effects).toEqual([]);
+  });
+
+  it("refuses a second command while one is still in flight", () => {
+    const saving = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      edited(),
+    ).state;
+
+    // The wipe lives at the other end of the page and knows nothing about the
+    // save; the flag is one field, so the second command would overwrite the
+    // first, one dump would answer for both, and two flash erases would overlap
+    // on the device.
+    const { state, effects } = apply(
+      { type: "bank-command", command: "wipe" },
+      "connected",
+      saving,
+    );
+    expect(state).toBe(saving);
+    expect(state.pendingCommand).toBe("save");
+    expect(effects).toEqual([]);
+  });
+
+  it("takes the next one once the window has run out", () => {
+    const saving = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      edited(),
+    ).state;
+    const lapsed = apply(
+      { type: "command-timeout" },
+      "connected",
+      saving,
+    ).state;
+
+    const { state } = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      lapsed,
+    );
+    // The refusal above is a window, not a door that locks: the row a dropped
+    // dump would have killed is exactly what the window exists to reopen.
+    expect(state.pendingCommand).toBe("save");
+  });
+
+  it("never writes address 1", () => {
+    const { effects } = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      edited(),
+    );
+    expect(
+      effects.some(
+        (effect) => effect.type === "write" && effect.address === BANK_ADDRESS,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("the third capture case: a save we issued (SPEC.md 10.3)", () => {
+  function issued(command: "save" | "reset" | "wipe"): ParametersState {
+    return apply({ type: "bank-command", command }, "connected", edited())
+      .state;
+  }
+
+  it("captures the reference on the dump that follows, and clears the flag", () => {
+    const values = identityDump();
+    values[40] = 999;
+
+    const state = apply(
+      { type: "dump", values },
+      "connected",
+      issued("save"),
+    ).state;
+
+    // Same bank, live state: without the flag this dump would leave the
+    // reference alone and the amber LED would stay lit on a saved bank.
+    expect(isEdited(state, 40)).toBe(false);
+    expect(state.pendingCommand).toBeNull();
+  });
+
+  it("never inspects the dump to decide: the flag alone says so", () => {
+    // The very same dump, with no command issued, changes nothing.
+    const values = identityDump();
+    values[40] = 999;
+
+    const state = apply({ type: "dump", values }, "connected", edited()).state;
+    expect(isEdited(state, 40)).toBe(true);
+  });
+
+  it("captures on a reset and on a wipe too", () => {
+    for (const command of ["reset", "wipe"] as const) {
+      // Factory values come back: the reference must follow them, or every
+      // amber LED lights against a bank that no longer exists.
+      const factory = identityDump();
+      factory[40] = 7;
+      const state = apply(
+        { type: "dump", values: factory },
+        "connected",
+        issued(command),
+      ).state;
+      expect(state.stored?.[40]).toBe(7);
+      expect(isEdited(state, 40)).toBe(false);
+    }
+  });
+
+  it("drops the flag when the wire goes before the answer", () => {
+    const state = apply(
+      { type: "transport-connection", connected: false },
+      "interrupted",
+      issued("save"),
+      "connected",
+    ).state;
+
+    // Otherwise the reconnection dump — a reload from flash, the loss of
+    // SPEC.md 9.5 — would be consumed as the answer to a save that never
+    // happened.
+    expect(state.pendingCommand).toBeNull();
+  });
+});
+
+describe("what the strip is owed after a command (SPEC.md 10.5, A.3)", () => {
+  function answer(command: "save" | "reset" | "wipe", bank = 1) {
+    const issued = apply(
+      { type: "bank-command", command },
+      "connected",
+      edited(),
+    ).state;
+    const values = identityDump();
+    values[BANK_ADDRESS] = bank;
+    return apply({ type: "dump", values }, "connected", issued).state;
+  }
+
+  it("acknowledges the save, the reset and the wipe", () => {
+    expect(answer("save").lastLossNotice).toEqual({ kind: "saved", bank: 1 });
+    expect(answer("reset").lastLossNotice).toEqual({ kind: "reset", bank: 1 });
+    // A wipe took all twelve, so it names none of them.
+    expect(answer("wipe").lastLossNotice).toEqual({ kind: "wiped" });
+  });
+
+  it("states what a bank change cost, once, and only when it cost something", () => {
+    const values = identityDump();
+    values[BANK_ADDRESS] = 4;
+
+    expect(
+      apply({ type: "dump", values }, "connected", edited()).state
+        .lastLossNotice,
+    ).toEqual({ kind: "bank-changed", bank: 4, lost: 1 });
+  });
+
+  it("says nothing about a clean bank change", () => {
+    const values = identityDump();
+    values[BANK_ADDRESS] = 4;
+
+    // The number and the hue changed in that same strip and speak for
+    // themselves; a line saying "0 unsaved changes lost" is noise.
+    expect(
+      apply({ type: "dump", values }, "connected", dumped()).state
+        .lastLossNotice,
+    ).toBeNull();
+  });
+
+  it("reads a bank change ahead of the command it was waiting for", () => {
+    const saving = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      edited(),
+    ).state;
+    const elsewhere = identityDump();
+    elsewhere[BANK_ADDRESS] = 4;
+
+    // No command moves the bank — `save_config` writes the one the device is
+    // already in — so this dump is a physical preset button, whatever we had in
+    // flight. Read the other way round the strip would say "Saved to bank 5"
+    // about a bank nobody asked for, and never say what the press cost.
+    const state = apply(
+      { type: "dump", values: elsewhere },
+      "connected",
+      saving,
+    ).state;
+    expect(state.lastLossNotice).toEqual({
+      kind: "bank-changed",
+      bank: 4,
+      lost: 1,
+    });
+    // The flag is still consumed: this dump is a reload from flash either way.
+    expect(state.pendingCommand).toBeNull();
+  });
+
+  it("counts the dock in the instant before the dump", () => {
+    const twice = apply(
+      { type: "edit", address: 41, value: 999 },
+      "connected",
+      edited(),
+    ).state;
+    const values = identityDump();
+    values[BANK_ADDRESS] = 4;
+
+    const notice = apply({ type: "dump", values }, "connected", twice).state
+      .lastLossNotice;
+    expect(notice).toEqual({ kind: "bank-changed", bank: 4, lost: 2 });
+    // And the dump has already taken them: the count is all that is left.
+    expect(
+      editBuffer(apply({ type: "dump", values }, "connected", twice).state),
+    ).toEqual([]);
+  });
+});
+
+describe("a command the device never answers (SPEC.md 10.2)", () => {
+  function issued(): ParametersState {
+    return apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      dumped(),
+    ).state;
+  }
+
+  it("asks for a window when it issues one", () => {
+    const { effects } = apply(
+      { type: "bank-command", command: "save" },
+      "connected",
+      dumped(),
+    );
+    expect(effects).toContainEqual({ type: "schedule-command-timeout" });
+  });
+
+  it("drops the flag when the window runs out", () => {
+    // A dump the wire dropped would otherwise leave the editing row disabled
+    // for the rest of the session — a modal progress state by accident.
+    const state = apply(
+      { type: "command-timeout" },
+      "connected",
+      issued(),
+    ).state;
+    expect(state.pendingCommand).toBeNull();
+  });
+
+  it("is inert once the answer has arrived", () => {
+    const answered = apply(
+      { type: "dump", values: identityDump() },
+      "connected",
+      issued(),
+    ).state;
+    // The timer still fires: it must change nothing, and above all it must not
+    // take back the notice the dump left.
+    const after = apply({ type: "command-timeout" }, "connected", answered);
+    expect(after.state).toBe(answered);
   });
 });

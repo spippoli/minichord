@@ -1,4 +1,5 @@
 import type { PortRef } from "../transport";
+import type { BankCommand } from "./events";
 
 /**
  * What a pure reducer asks the world to do.
@@ -33,4 +34,24 @@ export type Effect =
    * frame (SPEC.md 5.7); the end of a drag is the moment where waiting would
    * mean the last position of the drag is the one that got coalesced away.
    */
-  | { type: "flush-writes" };
+  | { type: "flush-writes" }
+  /**
+   * One of the three flash commands, at the bank the reducer read (SPEC.md
+   * 10.2, 10.4).
+   *
+   * The bank travels on the effect rather than being read again by the runtime:
+   * what is saved is the bank the state was in when the button was clicked, and
+   * a second reading — after a physical preset button landed in between — would
+   * be a save into a bank nobody named. A wipe carries it too and ignores it;
+   * the argument of command 1 is ignored by the firmware.
+   */
+  | { type: "device-command"; command: BankCommand; bank: number }
+  /**
+   * Give the command a window, past which it is treated as unanswered.
+   *
+   * The flag it raises is what disables the row while a ~165 ms round trip is
+   * in flight, and a dump the wire dropped would otherwise leave that row dead
+   * for the rest of the session with nothing but a replug to clear it — a
+   * modal progress state by accident, which SPEC.md 10.2 rules out on purpose.
+   */
+  | { type: "schedule-command-timeout" };

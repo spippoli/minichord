@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { BANK_ADDRESS, FIRMWARE_VERSION_ADDRESS } from "../domain";
 import { PARAMETER_COUNT } from "../transport";
-import type { AppState } from "../state";
+import type { AppState, StripNotice } from "../state";
 import { stripLine, stripNotice } from "./stripLine";
 
 /** Connected to a port, on bank 3, with a store behind it. */
@@ -22,7 +22,13 @@ function connected(): AppState {
       rediscovering: false,
       dumpRetriesLeft: 0,
     },
-    parameters: { values, stored: values, held: null, lastLossNotice: null },
+    parameters: {
+      values,
+      stored: values,
+      held: null,
+      pendingCommand: null,
+      lastLossNotice: null,
+    },
   };
 }
 
@@ -120,5 +126,38 @@ describe("the strip (SPEC.md A.3)", () => {
         },
       }),
     ).toBe("minichord MIDI 1 · firmware 8 · bank 3");
+  });
+});
+
+describe("the bank lines (SPEC.md 10.5, A.3)", () => {
+  function saying(notice: StripNotice): string | null {
+    const state = connected();
+    return stripNotice({
+      ...state,
+      parameters: { ...state.parameters, lastLossNotice: notice },
+    });
+  }
+
+  it("acknowledges the save, naming the bank it went into", () => {
+    // The whole conversation a save has: it asked nothing before acting.
+    expect(saying({ kind: "saved", bank: 6 })).toBe("Saved to bank 7.");
+  });
+
+  it("acknowledges a bank reset and a memory wipe", () => {
+    expect(saying({ kind: "reset", bank: 0 })).toBe("Bank 1 reset to factory.");
+    // A wipe took all twelve, so it names none of them.
+    expect(saying({ kind: "wiped" })).toBe("All banks reset to factory.");
+  });
+
+  it("states what a bank change cost, in the count the dock held", () => {
+    expect(saying({ kind: "bank-changed", bank: 4, lost: 3 })).toBe(
+      "Bank 5 loaded — 3 unsaved changes lost.",
+    );
+  });
+
+  it("spells out the singular there too", () => {
+    expect(saying({ kind: "bank-changed", bank: 4, lost: 1 })).toBe(
+      "Bank 5 loaded — 1 unsaved change lost.",
+    );
   });
 });

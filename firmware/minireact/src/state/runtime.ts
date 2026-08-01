@@ -27,6 +27,9 @@ export type RuntimeTransport = {
   bind(port: PortRef): void;
   requestDump(): boolean;
   sendParameter(address: number, rawValue: number): boolean;
+  saveToBank(bank: number): boolean;
+  resetBank(bank: number): boolean;
+  wipeMemory(): boolean;
   subscribe(listener: (event: TransportEvent) => void): Unsubscribe;
   onPortsChanged(listener: () => void): Unsubscribe;
 };
@@ -51,6 +54,8 @@ export type RuntimeOptions = {
   dumpRetryMs?: number;
   /** How long a bulk write waits for the dump that confirms it. */
   bulkDumpTimeoutMs?: number;
+  /** How long a flash command waits for the dump that confirms it. */
+  commandTimeoutMs?: number;
   /** The animation frame the write policy flushes on (SPEC.md 5.7). */
   scheduleFlush?: FrameScheduler;
 };
@@ -67,6 +72,17 @@ const DUMP_RETRY_MS = 1000;
  * not answering and the caller is owed a count rather than a hung promise.
  */
 const BULK_DUMP_TIMEOUT_MS = 2000;
+
+/**
+ * The window a save, a reset or a wipe is given.
+ *
+ * All three erase and rewrite flash and then reload the bank, measured at 164
+ * ms and read off the firmware source for the other two (SPEC.md 1.2). This is
+ * an order of magnitude above that: it is not a retry, it is the point past
+ * which the device is not answering and the editing row must stop being
+ * disabled by a promise nobody is going to keep.
+ */
+const COMMAND_TIMEOUT_MS = 2000;
 
 const scheduleOnFrame: FrameScheduler = (flush) => {
   if (typeof requestAnimationFrame === "function") {
@@ -100,12 +116,15 @@ export class Runtime {
   private readonly probeTimeoutMs: number;
   private readonly dumpRetryMs: number;
   private readonly bulkDumpTimeoutMs: number;
+  private readonly commandTimeoutMs: number;
   private readonly scheduleFlush: FrameScheduler;
 
   private state: AppState = initialAppState;
   private readonly listeners = new Set<() => void>();
   private readonly subscriptions: Unsubscribe[] = [];
   private dumpRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The window the flash command in flight has left, if there is one. */
+  private commandTimer: ReturnType<typeof setTimeout> | null = null;
   /** At most one value per address, waiting for the frame (SPEC.md 5.7). */
   private readonly pendingWrites = new Map<number, number>();
   /** Who is waiting for the next dump: at most one bulk write at a time. */
@@ -122,6 +141,7 @@ export class Runtime {
     this.probeTimeoutMs = options.probeTimeoutMs ?? PROBE_TIMEOUT_MS;
     this.dumpRetryMs = options.dumpRetryMs ?? DUMP_RETRY_MS;
     this.bulkDumpTimeoutMs = options.bulkDumpTimeoutMs ?? BULK_DUMP_TIMEOUT_MS;
+    this.commandTimeoutMs = options.commandTimeoutMs ?? COMMAND_TIMEOUT_MS;
     this.scheduleFlush = options.scheduleFlush ?? scheduleOnFrame;
   }
 
@@ -159,6 +179,7 @@ export class Runtime {
   dispose(): void {
     this.disposed = true;
     this.cancelDumpRetry();
+    this.cancelCommandTimeout();
     this.cancelPendingFlush();
     this.pendingWrites.clear();
     // A bulk write in flight is owed an answer, and "no dump" is one: a hung
@@ -188,6 +209,28 @@ export class Runtime {
   /** One control moved: one address, one raw wire value. */
   setParameter(address: number, rawValue: number): void {
     this.dispatch({ type: "edit", address, value: rawValue });
+  }
+
+  /**
+   * Commit the live state to the bank the device is in (SPEC.md 10.2).
+   *
+   * No argument, and that is the design: the firmware's `save_config` sets the
+   * current bank before reloading, so any target other than the current one
+   * would move the user through the destructive door. The bank is the store's
+   * to read (see the reducer), not the caller's to name.
+   */
+  saveBank(): void {
+    this.dispatch({ type: "bank-command", command: "save" });
+  }
+
+  /** Reset the current bank to the factory sound. Irreversible (SPEC.md 10.4). */
+  resetBank(): void {
+    this.dispatch({ type: "bank-command", command: "reset" });
+  }
+
+  /** Reset all twelve banks. The maintenance gesture of SPEC.md 10.6. */
+  wipeMemory(): void {
+    this.dispatch({ type: "bank-command", command: "wipe" });
   }
 
   /**
@@ -352,6 +395,32 @@ export class Runtime {
       case "flush-writes":
         this.cancelPendingFlush();
         this.flushWrites();
+        return;
+
+      case "schedule-command-timeout":
+        // One timer, replaced rather than stacked: there is at most one command
+        // in flight, because the row that issues them is disabled while one is.
+        if (this.commandTimer !== null) clearTimeout(this.commandTimer);
+        this.commandTimer = setTimeout(() => {
+          this.commandTimer = null;
+          this.dispatch({ type: "command-timeout" });
+        }, this.commandTimeoutMs);
+        return;
+
+      case "device-command":
+        // Nothing waits for the answer: the device confirms all three with an
+        // unsolicited dump (SPEC.md 1.3), which arrives by the one door every
+        // dump arrives by and is consumed by the flag the reducer raised.
+        switch (effect.command) {
+          case "save":
+            this.transport.saveToBank(effect.bank);
+            return;
+          case "reset":
+            this.transport.resetBank(effect.bank);
+            return;
+          case "wipe":
+            this.transport.wipeMemory();
+        }
     }
   }
 
@@ -447,6 +516,12 @@ export class Runtime {
       answered: candidates.filter((_, at) => answers[at]),
       ports,
     });
+  }
+
+  private cancelCommandTimeout(): void {
+    if (this.commandTimer === null) return;
+    clearTimeout(this.commandTimer);
+    this.commandTimer = null;
   }
 
   private cancelDumpRetry(): void {

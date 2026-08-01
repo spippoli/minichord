@@ -1,6 +1,17 @@
 import type { PortRef, TransportErrorReason } from "../transport";
 
 /**
+ * The three commands that write flash: save the live state into the current
+ * bank, reset that bank to factory, wipe every bank (SPEC.md 1.2, 10.4).
+ *
+ * They are one union rather than three events because the store does the same
+ * thing with all three — every one of them makes the device reload from flash,
+ * which is what the reference of SPEC.md 10.3 is captured on. What separates
+ * them is the wire byte and the line the strip says afterwards.
+ */
+export type BankCommand = "save" | "reset" | "wipe";
+
+/**
  * Everything that can happen to the app, as one closed union.
  *
  * Three sources feed it and the names say which: `boot`/`connect`/`pick`/
@@ -43,6 +54,17 @@ export type AppEvent =
   | { type: "transport-error"; reason: TransportErrorReason }
   /** A control was moved: one address, one raw wire value. */
   | { type: "edit"; address: number; value: number }
+  /**
+   * One of the three commands that touch flash (SPEC.md 10.4).
+   *
+   * It carries no bank: **saving targets the current bank only** (SPEC.md
+   * 10.2), and the bank is the store's to read, so no caller can name another
+   * one. That is the rule enforced where it can be tested rather than promised
+   * by the component that draws the button.
+   */
+  | { type: "bank-command"; command: BankCommand }
+  /** The window a flash command was given ran out with no dump in it. */
+  | { type: "command-timeout" }
   /** A pointer went down on a control: that address is now held (SPEC.md 5.3). */
   | { type: "pointer-down"; address: number }
   /** The pointer came up. There is only ever one, so it carries no address. */

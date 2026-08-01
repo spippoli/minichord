@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { byAddress, type Section } from "../../domain";
+import { Maintenance } from "../banks/Maintenance";
 import { Dock } from "./Dock";
 import { focusParameter, setParameterReveal } from "./focusParameter";
 import styles from "./Panel.module.css";
@@ -263,6 +264,12 @@ export function Panel() {
         editing before the panel that produces it.
       */}
       <Dock id={dockId} backTo={gridId} />
+
+      {/*
+        Last, and away from the editing row at the top of the page (SPEC.md
+        10.6): it repairs the device, it is not part of editing it.
+      */}
+      <Maintenance />
     </main>
   );
 }
