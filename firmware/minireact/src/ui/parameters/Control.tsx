@@ -79,6 +79,14 @@ export type ControlProps = {
   description: ParameterDescription;
   /** The device is older than the parameter: the slot stays, empty. */
   unequipped: boolean;
+  /**
+   * There is no wire: the control is readable and cannot be moved.
+   *
+   * Rendering only. The reducer is what refuses the edit (SPEC.md 5.2), and
+   * this component neither asks why nor decides: an unequipped slot and a
+   * disconnected device are two reasons for the same drawing.
+   */
+  readOnly: boolean;
   /** The two LEDs, read once by the binding and never composed here. */
   divergence: Divergence;
   onChange: (value: number) => void;
@@ -91,6 +99,7 @@ export function Control({
   value,
   description,
   unequipped,
+  readOnly,
   divergence,
   onChange,
   onPointerDown,
@@ -123,6 +132,16 @@ export function Control({
   /** Undo the window-level pointer watch, whoever ends the drag. */
   const release = useRef<(() => void) | null>(null);
   useEffect(() => () => release.current?.(), []);
+
+  /**
+   * Whether the value window is worth opening at all.
+   *
+   * An empty slot has no value to type into, and with no wire the window would
+   * take a number and drop it: the reducer refuses the edit, so what it offers
+   * is a typing gesture with no consequence. Refusing the gesture is the same
+   * choice the reducer makes, drawn (SPEC.md 9.4).
+   */
+  const editable = !unequipped && !readOnly;
 
   function change(next: number) {
     if (unequipped) return;
@@ -176,7 +195,7 @@ export function Control({
     if (event.key === "Enter") {
       // The one place focus movement is a control's business (SPEC.md 12.2).
       event.preventDefault();
-      if (!unequipped) setDraft(format(parameter, value));
+      if (editable) setDraft(format(parameter, value));
     }
   }
 
@@ -214,6 +233,7 @@ export function Control({
     <div
       className={styles.control}
       data-unequipped={unequipped || undefined}
+      data-readonly={readOnly || undefined}
       onPointerEnter={() =>
         readout.show("hover", { address: parameter.address })
       }
@@ -251,8 +271,9 @@ export function Control({
             "aria-labelledby": labelId,
             "aria-describedby": descriptionId,
             // Never `disabled`: that removes the slot from the tab order, and
-            // delivers its explanation to the mouse only (SPEC.md 12.6).
-            "aria-disabled": unequipped || undefined,
+            // delivers its explanation to the mouse only (SPEC.md 12.6). The
+            // same drawing for both reasons a control cannot be moved.
+            "aria-disabled": unequipped || readOnly || undefined,
             onKeyDown: onBodyKeyDown,
             // The other origin the dock does not offer (SPEC.md 8.2).
             onDoubleClick: () => change(defaultWire(parameter)),
@@ -278,7 +299,7 @@ export function Control({
           className={styles.window}
           aria-hidden="true"
           onClick={() => {
-            if (!unequipped) setDraft(format(parameter, value));
+            if (editable) setDraft(format(parameter, value));
           }}
         >
           {/* An unequipped slot has no value to read back, so the window says

@@ -30,8 +30,10 @@ function apply(
   event: AppEvent,
   status: ConnectionStatus = "connected",
   state: ParametersState = initialParametersState,
+  /** Where the connection was before this event; the same place by default. */
+  before: ConnectionStatus = status,
 ) {
-  return parametersReducer(state, event, status);
+  return parametersReducer(state, event, { status, before });
 }
 
 function dumped(values = identityDump()): ParametersState {
@@ -404,5 +406,96 @@ describe("the divergences the dock lists (SPEC.md 7.3, A.6)", () => {
 
   it("holds nothing before the first dump", () => {
     expect(editBuffer(initialParametersState)).toEqual([]);
+  });
+});
+
+describe("the reconnection notice (SPEC.md 9.5, A.3)", () => {
+  /** Connected, one address edited, then the wire went away. */
+  function edited(): ParametersState {
+    const base = identityDump();
+    base[BANK_ADDRESS] = 0;
+    return apply(
+      { type: "edit", address: 40, value: 999 },
+      "connected",
+      dumped(base),
+    ).state;
+  }
+
+  it("says nothing about a dump that did not follow an interruption", () => {
+    const { state } = apply(
+      { type: "dump", values: identityDump() },
+      "connected",
+      edited(),
+    );
+    expect(state.lastLossNotice).toBeNull();
+  });
+
+  it("counts what the reboot took, and names the bank it came back on", () => {
+    const flash = identityDump();
+    flash[BANK_ADDRESS] = 0;
+    // The device reloaded bank 1 from flash: address 40 is back to 40.
+    const { state } = apply(
+      { type: "dump", values: flash },
+      "connected",
+      edited(),
+      "interrupted",
+    );
+    expect(state.lastLossNotice).toEqual({
+      kind: "reconnected",
+      bank: 0,
+      lost: 1,
+    });
+    // The edits are gone from both sides at once, so the dock clears itself.
+    expect(editBuffer(state)).toEqual([]);
+  });
+
+  it("counts nothing when the values came back as they were left", () => {
+    // A reseated cable on a device that never rebooted: the edit survived, and
+    // a loss line here would be an invented alarm.
+    const before = edited();
+    const { state } = apply(
+      { type: "dump", values: [...before.values!] },
+      "connected",
+      before,
+      "interrupted",
+    );
+    expect(state.lastLossNotice).toEqual({
+      kind: "reconnected",
+      bank: 0,
+      lost: 0,
+    });
+    expect(editBuffer(state)).toHaveLength(1);
+  });
+
+  it("reports the bank it came back on when the device rebooted elsewhere", () => {
+    const other = identityDump();
+    other[BANK_ADDRESS] = 4;
+    const { state } = apply(
+      { type: "dump", values: other },
+      "connected",
+      edited(),
+      "interrupted",
+    );
+    expect(state.lastLossNotice).toEqual({
+      kind: "reconnected",
+      bank: 4,
+      lost: 1,
+    });
+    expect(editBuffer(state)).toEqual([]);
+  });
+
+  it("stands until the next dump replaces it", () => {
+    const stated = apply(
+      { type: "dump", values: identityDump() },
+      "connected",
+      edited(),
+      "interrupted",
+    ).state;
+    const later = apply(
+      { type: "dump", values: identityDump() },
+      "connected",
+      stated,
+    );
+    expect(later.state.lastLossNotice).toBeNull();
   });
 });

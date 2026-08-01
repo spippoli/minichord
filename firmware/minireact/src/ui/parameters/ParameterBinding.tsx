@@ -1,6 +1,6 @@
 import { describeParameter, isAvailable, type Parameter } from "../../domain";
 import { differsFromDefault, firmwareVersion, isEdited } from "../../state";
-import { useAppState, useRuntime } from "../runtimeContext";
+import { useAppState, useReadOnly, useRuntime } from "../runtimeContext";
 import { Control } from "./Control";
 
 /**
@@ -23,6 +23,7 @@ import { Control } from "./Control";
 export function ParameterBinding({ parameter }: { parameter: Parameter }) {
   const runtime = useRuntime();
   const { parameters } = useAppState();
+  const readOnly = useReadOnly();
   const values = parameters.values;
 
   // No device, no state: the app before the first dump is the gate, so a
@@ -44,6 +45,9 @@ export function ParameterBinding({ parameter }: { parameter: Parameter }) {
       parameter={parameter}
       value={values[parameter.address]}
       unequipped={!isAvailable(parameter, version)}
+      // The value and both LEDs stay readable while the wire is out: that is
+      // the point of not freezing the editor behind an overlay (SPEC.md 9.4).
+      readOnly={readOnly}
       divergence={divergence}
       description={describeParameter(parameter, {
         firmwareVersion: version,

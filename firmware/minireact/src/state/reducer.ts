@@ -34,11 +34,10 @@ export function root(
   event: AppEvent,
 ): { state: AppState; effects: Effect[] } {
   const connection = connectionReducer(state.connection, event);
-  const parameters = parametersReducer(
-    state.parameters,
-    event,
-    connection.state.status,
-  );
+  const parameters = parametersReducer(state.parameters, event, {
+    status: connection.state.status,
+    before: state.connection.status,
+  });
 
   const changed =
     connection.state !== state.connection ||

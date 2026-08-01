@@ -73,6 +73,13 @@ export type SequencerProps = {
   firmwareVersion: number;
   /** The slot is dead when the device is older than the parameter. */
   unequipped: boolean;
+  /**
+   * There is no wire: the pattern is readable and cannot be changed.
+   *
+   * Rendering only, exactly as for a control: the reducer is what refuses the
+   * edit (SPEC.md 5.2, 9.4), and the grid draws that refusal.
+   */
+  readOnly: boolean;
   onToggle: (step: number, note: number, on: boolean) => void;
 };
 
@@ -86,6 +93,7 @@ export function Sequencer({
   cycleLength,
   firmwareVersion,
   unequipped,
+  readOnly,
   onToggle,
 }: SequencerProps) {
   const readout = useReadoutChannel();
@@ -199,7 +207,7 @@ export function Sequencer({
                   // Never `disabled`: that would take the cell out of the tab
                   // order and deliver its explanation to the mouse alone
                   // (SPEC.md 12.6).
-                  aria-disabled={unequipped || undefined}
+                  aria-disabled={unequipped || readOnly || undefined}
                   // One tab stop for the whole grid (SPEC.md 12.4).
                   tabIndex={sameCell(cursor, { step, note }) ? 0 : -1}
                   data-out-of-cycle={inCycle ? undefined : true}

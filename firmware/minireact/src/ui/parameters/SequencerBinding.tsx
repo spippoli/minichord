@@ -8,7 +8,7 @@ import {
   type Parameter,
 } from "../../domain";
 import { differsFromDefault, firmwareVersion, isEdited } from "../../state";
-import { useAppState, useRuntime } from "../runtimeContext";
+import { useAppState, useReadOnly, useRuntime } from "../runtimeContext";
 import { Sequencer } from "./Sequencer";
 
 /**
@@ -44,6 +44,7 @@ const COLUMNS: readonly Parameter[] = Array.from(
 export function SequencerBinding() {
   const runtime = useRuntime();
   const { parameters } = useAppState();
+  const readOnly = useReadOnly();
   const values = parameters.values;
 
   // No device, no state: the app before the first dump is the gate (SPEC.md
@@ -71,6 +72,8 @@ export function SequencerBinding() {
       // The sixteen columns share one `introduction_version`, so the grid is
       // equipped or not as one thing.
       unequipped={!isAvailable(COLUMNS[0], version)}
+      // Readable throughout, LEDs included, exactly as a control is.
+      readOnly={readOnly}
       onToggle={(step, note, on) => {
         const address = rhythmStepAddress(step);
         runtime.setParameter(

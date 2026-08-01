@@ -48,7 +48,8 @@ const transport = new MinichordTransport({
 // drive the physical side the app cannot reach
 simulator.pressPresetButton(1); // emits an unsolicited dump
 simulator.disconnect();
-simulator.reconnect();
+simulator.reconnect(); // the same ports, and RAM intact: a cable reseated
+simulator.reenumerate(); // new port ids, and the bank read back from flash
 ```
 
 Options: `initialBank`, `firmwareVersion` (lower it to exercise
@@ -62,7 +63,9 @@ for deterministic tests — everything then resolves on a microtask).
 - The 12 banks, with the firmware's **real** factory content, extracted from
   `default_bank_sysex_parameters` in `firmware/src/main.cpp` by
   `tools/extract-firmware-defaults.py` into `defaultBanks.ts`.
-- Port enumeration (two ports), connect/disconnect and `statechange`.
+- Port enumeration (two ports), connect/disconnect and `statechange`, plus the
+  re-enumeration of SPEC.md 1.5: the device comes back on ids the bus has just
+  invented, having rebooted, which is the case reconnection is really about.
 - The measured ingest rate and dump latency (see Calibration).
 
 Three firmware behaviours it reproduces on purpose, because an app built

@@ -171,41 +171,75 @@ export class MinichordSimulator {
   readonly device: MinichordDevice;
   readonly access: MIDIAccess;
 
-  private readonly input: FakeInput;
-  private readonly output: FakeOutput;
+  private input: FakeInput;
+  private output: FakeOutput;
+  private readonly names: readonly [string, string];
   private readonly realisticTiming: boolean;
+  /** How many times the device has appeared on the bus, so ids stay distinct. */
+  private generation = 1;
   /** Device time at which the ingest queue drains, in performance-clock seconds. */
   private queueFreeAt = 0;
 
   constructor(options: SimulatorOptions = {}) {
     this.device = new MinichordDevice(options);
     this.realisticTiming = options.realisticTiming ?? true;
-    const [first, second] = options.portNames ?? [
-      "minichord MIDI 1",
-      "minichord MIDI 2",
-    ];
-
-    this.input = new FakeInput("sim-in-1", first);
-    this.output = new FakeOutput("sim-out-1", first, (data) =>
-      this.handleSend(data),
-    );
-    const otherIn = new FakeInput("sim-in-2", second);
-    const otherOut = new FakeOutput("sim-out-2", second, () => {});
+    this.names = options.portNames ?? ["minichord MIDI 1", "minichord MIDI 2"];
 
     const access = new EventTarget() as unknown as MIDIAccess;
     Object.assign(access, {
-      inputs: new Map<string, MIDIInput>([
-        [this.input.id, this.input as unknown as MIDIInput],
-        [otherIn.id, otherIn as unknown as MIDIInput],
-      ]),
-      outputs: new Map<string, MIDIOutput>([
-        [this.output.id, this.output as unknown as MIDIOutput],
-        [otherOut.id, otherOut as unknown as MIDIOutput],
-      ]),
+      inputs: new Map<string, MIDIInput>(),
+      outputs: new Map<string, MIDIOutput>(),
       sysexEnabled: true,
       onstatechange: null,
     });
     this.access = access;
+
+    const [input, output] = this.enumeratePorts();
+    this.input = input;
+    this.output = output;
+  }
+
+  /**
+   * Put one generation of the four ports on the bus, on ids of their own.
+   *
+   * Ids are per-appearance because that is what a real bus does: a device that
+   * re-enumerates comes back as a different port, which is why reconnection
+   * cannot be a matter of writing to the port ref we already hold (SPEC.md 9.5).
+   */
+  private enumeratePorts(): [FakeInput, FakeOutput] {
+    const [first, second] = this.names;
+    const at = this.generation;
+
+    const input = new FakeInput(`sim-in-1-${at}`, first);
+    const output = new FakeOutput(`sim-out-1-${at}`, first, (data) =>
+      this.handleSend(data),
+    );
+    const otherIn = new FakeInput(`sim-in-2-${at}`, second);
+    const otherOut = new FakeOutput(`sim-out-2-${at}`, second, () => {});
+
+    const inputs = this.access.inputs as unknown as Map<string, MIDIInput>;
+    const outputs = this.access.outputs as unknown as Map<string, MIDIOutput>;
+    inputs.set(input.id, input as unknown as MIDIInput);
+    inputs.set(otherIn.id, otherIn as unknown as MIDIInput);
+    outputs.set(output.id, output as unknown as MIDIOutput);
+    outputs.set(otherOut.id, otherOut as unknown as MIDIOutput);
+
+    return [input, output];
+  }
+
+  /**
+   * The half of cable 1 the device listens on — the one a test taps.
+   *
+   * Read through here rather than by id: a re-enumeration hands out new ones,
+   * so an id written into a test is a fact that stops being true.
+   */
+  get controlOutput(): MIDIOutput {
+    return this.output as unknown as MIDIOutput;
+  }
+
+  /** The half of cable 1 the device answers on. */
+  get controlInput(): MIDIInput {
+    return this.input as unknown as MIDIInput;
   }
 
   private now(): number {
@@ -284,7 +318,7 @@ export class MinichordSimulator {
     this.fireStateChange(this.input);
   }
 
-  /** Plug it back in. */
+  /** Plug it back in, on the same ports: a cable reseated, nothing rebooted. */
   reconnect(): void {
     for (const port of [this.input, this.output]) {
       port.state = "connected";
@@ -292,6 +326,32 @@ export class MinichordSimulator {
     }
     this.queueFreeAt = 0;
     this.fireStateChange(this.input);
+  }
+
+  /**
+   * Come back as a different device: new port ids, and RAM gone.
+   *
+   * This is the re-enumeration of SPEC.md 1.5, the one that happens with the
+   * cable untouched. The old ports go away for good and the values are read
+   * back from flash, so anything the app had sent and not saved is lost. The
+   * dump `load_config` emits is dropped: it happens while the ports are still
+   * being handed out, with nobody bound to hear it.
+   */
+  reenumerate(): void {
+    const [goneIn, goneOut] = [this.input, this.output];
+    for (const port of [goneIn, goneOut]) {
+      port.state = "disconnected";
+      port.connection = "closed";
+    }
+    this.fireStateChange(goneIn);
+
+    this.device.reboot();
+    this.generation += 1;
+    this.queueFreeAt = 0;
+    const [input, output] = this.enumeratePorts();
+    this.input = input;
+    this.output = output;
+    this.fireStateChange(input);
   }
 
   private fireStateChange(port: FakePort): void {

@@ -221,3 +221,16 @@
 .control[data-unequipped] .menu {
   color: var(--silkscreen-dead);
 }
+
+/*
+ * No wire: the row is readable and cannot be moved (SPEC.md 9.4).
+ *
+ * Deliberately lighter than an unequipped slot. That one is a permanent fact
+ * about the device and its cap goes dead; this one lasts as long as a cable is
+ * out, and the values and both LEDs are exactly what you want to read while you
+ * reseat it — so the caps keep their colour and only the pointer says no.
+ */
+.control[data-readonly] .slot,
+.control[data-readonly] .window {
+  cursor: not-allowed;
+}

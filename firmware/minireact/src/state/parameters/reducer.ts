@@ -46,12 +46,47 @@ export type ParametersState = {
    * which arrives with the banks; the first two need nothing but this slice.
    */
   readonly stored: readonly number[] | null;
+  /**
+   * What the strip has to say about the last dump, or `null`.
+   *
+   * The apparent back-edge from `parameters` to the connection, and it is not
+   * one: the notice is a field here and the strip is the component that reads
+   * both slices (SPEC.md 5.5). It lives here because only this slice can count
+   * what was lost — the connection knows the wire came back, not what the
+   * values were doing while it was gone.
+   *
+   * Every dump sets it, to `null` when there is nothing to say. That is what
+   * "stated once" means in a store: the line stands until the next dump
+   * replaces it, and no timer takes it away.
+   */
+  readonly lastLossNotice: StripNotice | null;
+};
+
+/**
+ * A line the strip owes the user about something the device did (SPEC.md A.3).
+ *
+ * Data, not a sentence: the wording, the bank number and the singular of
+ * "1 unsaved change" are `ui/`'s, and this slice does not compose text.
+ *
+ * It rides on the field SPEC.md 5.5 calls `lastLossNotice`, and it is named for
+ * the strip rather than for the loss: a return that cost nothing is still one
+ * of these, because what the strip owes the user about a return is one line
+ * either way.
+ */
+export type StripNotice = {
+  /** The device came back after an interruption (SPEC.md 9.5). */
+  readonly kind: "reconnected";
+  /** The raw value at address 1 in the dump that came back. */
+  readonly bank: number;
+  /** How many unsaved changes did not survive. Zero says nothing was lost. */
+  readonly lost: number;
 };
 
 export const initialParametersState: ParametersState = {
   values: null,
   held: null,
   stored: null,
+  lastLossNotice: null,
 };
 
 /**
@@ -232,15 +267,54 @@ function protectHeld(
   return next;
 }
 
+/**
+ * The connection around this same event: the one edge between the slices runs
+ * `connection → parameters` and never back, which is why the root evaluates
+ * them in that order (SPEC.md 5.1, 5.5).
+ *
+ * Both sides of the event are carried because a dump is read differently
+ * depending on where it lands: the one that arrives on a connection that was
+ * `interrupted` a moment ago is the reconnection dump, and it is the only one
+ * this slice has anything to say about (SPEC.md 9.5).
+ */
+export type ConnectionView = {
+  /** The status after this event. */
+  readonly status: ConnectionStatus;
+  /** The status before it. */
+  readonly before: ConnectionStatus;
+};
+
+/**
+ * What the strip owes the user about the dump that just landed (SPEC.md 9.5).
+ *
+ * Only a reconnection speaks. A re-enumeration is a reboot: the device reloads
+ * its bank from flash and the unsaved edits vanish from both sides at once,
+ * while the strip would otherwise read like good news. So the fact is stated,
+ * with the bank it came back on and the count.
+ *
+ * **The count is what the dump did not bring back, not the dock count.** A
+ * reseated cable on a device that never rebooted returns the values it was
+ * holding, edits included, and nothing was lost — the loss line would then be
+ * an invented alarm. The two cases are told apart by the only evidence there
+ * is: whether the values came back changed. That is a comparison of the dump
+ * against the store, which is the same question SPEC.md 5.3 already asks.
+ */
+function reconnectionNotice(
+  state: ParametersState,
+  values: readonly number[],
+  connection: ConnectionView,
+): StripNotice | null {
+  if (connection.before !== "interrupted") return null;
+  const lost = editBuffer(state).filter(
+    (row) => row.current !== values[row.parameter.address],
+  ).length;
+  return { kind: "reconnected", bank: values[BANK_ADDRESS], lost };
+}
+
 export function parametersReducer(
   state: ParametersState,
   event: AppEvent,
-  /**
-   * The connection after this same event: the one edge between the slices runs
-   * `connection → parameters` and never back, which is why the root evaluates
-   * them in that order (SPEC.md 5.1, 5.5).
-   */
-  status: ConnectionStatus,
+  connection: ConnectionView,
 ): { state: ParametersState; effects: Effect[] } {
   switch (event.type) {
     case "dump": {
@@ -250,13 +324,18 @@ export function parametersReducer(
         state.values[BANK_ADDRESS] !== values[BANK_ADDRESS];
 
       return {
-        state: { ...state, values, stored: loaded ? values : state.stored },
+        state: {
+          ...state,
+          values,
+          stored: loaded ? values : state.stored,
+          lastLossNotice: reconnectionNotice(state, values, connection),
+        },
         effects: [],
       };
     }
 
     case "edit": {
-      if (status !== "connected" || !state.values) {
+      if (connection.status !== "connected" || !state.values) {
         return { state, effects: [] };
       }
       const values = state.values.slice();
