@@ -107,16 +107,6 @@
   --pad-edge: #3f4652;
   --pad-on: #6fe39b;
   --pad-on-glow: 0 0 5px #1d4c31;
-  --spectrum: linear-gradient(
-    to right,
-    hsl(0 85% 55%),
-    hsl(60 85% 55%),
-    hsl(120 85% 55%),
-    hsl(180 85% 55%),
-    hsl(240 85% 55%),
-    hsl(300 85% 55%),
-    hsl(360 85% 55%)
-  );
 }
 
 /*
@@ -196,16 +186,6 @@
   --pad-edge: #a59b83;
   --pad-on: #3c5c2e;
   --pad-on-glow: inset 0 1px 2px #2a4220;
-  --spectrum: linear-gradient(
-    to right,
-    hsl(0 80% 42%),
-    hsl(60 80% 42%),
-    hsl(120 80% 42%),
-    hsl(180 80% 42%),
-    hsl(240 80% 42%),
-    hsl(300 80% 42%),
-    hsl(360 80% 42%)
-  );
 }
 
 /*
@@ -234,12 +214,11 @@
  * And above those, one tint rule: the bank's own hue.
  *
  * It reaches exactly one element, the bank LED in the strip — not the windows,
- * not the lit surfaces, not the moulding. The hue is the bank's *identity*, and
- * an identity belongs in one place rather than smeared across the surface being
- * worked on. `--hue` is set inline on the root from the live value of address
- * 20; `--cap-hue` is set inline on the `bank color` control alone, where the
- * value under the hand *is* a colour (SPEC.md 8.5), and both resolve at the
- * element that carries them.
+ * not the lit surfaces, not the moulding, and no control anywhere: the hue is
+ * read from the device and never edited here. The hue is the bank's *identity*,
+ * and an identity belongs in one place rather than smeared across the surface
+ * being worked on. `--hue` is set inline on the root from the live value of
+ * address 20, and resolves at the element that carries it.
  *
  * The saturation is the firmware's: it drives the physical LED at full.
  *
@@ -250,7 +229,6 @@
  */
 [data-moulding] {
   --tint: hsl(var(--hue) 100% 50%);
-  --cap-tint: hsl(var(--cap-hue) 100% 50%);
 }
 
 /*

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { BANK_ADDRESS, byAddress, defaultWire } from "../../domain";
+import {
+  BANK_ADDRESS,
+  BANK_COLOR_ADDRESS,
+  byAddress,
+  defaultWire,
+} from "../../domain";
 import { PARAMETER_COUNT } from "../../transport";
 import type { ConnectionStatus } from "../connection/reducer";
 import type { AppEvent } from "../events";
@@ -9,6 +14,7 @@ import {
   differsFromDefault,
   editBuffer,
   firmwareVersion,
+  isComparable,
   isEdited,
   initialParametersState,
   parametersReducer,
@@ -365,7 +371,7 @@ describe("the divergences the dock lists (SPEC.md 7.3, A.6)", () => {
   });
 
   it("never lists the five physical knobs, which get one line instead", () => {
-    // They are the `hidden` group, so they are not among the 189 the panel
+    // They are the `hidden` group, so they are not among the 188 the panel
     // draws — and the dock's fiction line is the whole of what it says of them.
     const drifted = (() => {
       const state = dumped();
@@ -380,6 +386,20 @@ describe("the divergences the dock lists (SPEC.md 7.3, A.6)", () => {
     for (const row of editBuffer(drifted)) {
       expect(row.parameter.address).toBeGreaterThan(7);
     }
+  });
+
+  it("never lists the bank hue, which the panel does not edit", () => {
+    const state = { ...dumped() };
+    const values = [...state.values!];
+    values[BANK_COLOR_ADDRESS] = values[BANK_COLOR_ADDRESS] + 1;
+
+    expect(editBuffer({ ...state, values })).toEqual([]);
+  });
+
+  it("still lets a bulk write judge the bank hue", () => {
+    // The panel draws no control for it, but a preset import writes address 20
+    // and must still confirm that it landed (SPEC.md 5.8, 11.3).
+    expect(isComparable(BANK_COLOR_ADDRESS)).toBe(true);
   });
 
   it("holds nothing before the first dump", () => {

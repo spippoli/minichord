@@ -27,9 +27,9 @@ export type ParametersState = {
   /**
    * The address under an active pointer, or `null`.
    *
-   * One field, not 189: the rule it serves is *per address and over time*, and
+   * One field, not 188: the rule it serves is *per address and over time*, and
    * spread across the controls that read it, "the address under an active
-   * pointer" becomes 189 pieces of local state (SPEC.md 6.1, invariant 1).
+   * pointer" becomes 188 pieces of local state (SPEC.md 6.1, invariant 1).
    */
   readonly held: number | null;
   /**
@@ -149,13 +149,17 @@ export function differsFromDefault(
 }
 
 /**
- * The 189 parameters a panel draws, by address.
+ * The 188 parameters a panel draws, by address.
  *
  * `visibleParameters` is deliberately the source rather than every address of
- * the manifest: the six hidden ones are exactly the six excluded above — the
- * five physical knobs and the firmware version — so the dock never has
- * to subtract them a second time, and the five get the dock's one line rather
- * than a row of their own (SPEC.md 7.3).
+ * the manifest: what the panel does not draw, the dock does not list. That
+ * covers the six hidden ones — the five physical knobs, which get the dock's
+ * one line rather than a row each, and the firmware version (SPEC.md 7.3) — and
+ * the bank hue, which is the bank's identity rather than an edit (SPEC.md 7.4).
+ *
+ * It is **not** the same set as `isComparable` above, and the two must not be
+ * folded together: the hue is excluded here and comparable there, because a
+ * bulk write still writes address 20 and still has to judge that it landed.
  */
 const PARAMETER_AT: ReadonlyMap<number, Parameter> = new Map(
   visibleParameters.map((parameter) => [parameter.address, parameter]),

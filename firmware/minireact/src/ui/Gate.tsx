@@ -8,7 +8,7 @@ import styles from "./Gate.module.css";
  * Before the first dump the app is nothing but a connection screen.
  *
  * The store holds nothing until then (SPEC.md 5.2), so there is nothing for an
- * editor to draw: a panel of 189 empty controls is noise imitating an
+ * editor to draw: a panel of 188 empty controls is noise imitating an
  * interface. Once the dump lands this is gone for good — a mid-session
  * disconnect does not bring it back, because by then there are values worth
  * looking at (SPEC.md 9.1).

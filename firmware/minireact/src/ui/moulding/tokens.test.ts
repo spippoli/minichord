@@ -174,10 +174,9 @@ describe("the panel's colour", () => {
   it("names only tokens the moulding declares", () => {
     const declared = new Set([
       ...(moulding.match(/--[a-z-]+(?=\s*:)/g) ?? []),
-      // Set inline on the root and on the `bank color` control, which is where
-      // a value that *is* a colour comes from (SPEC.md 7.4, 8.5).
+      // Set inline on the panel root from the live value of address 20, which
+      // is the one hue the page carries (SPEC.md 7.4).
       "--hue",
-      "--cap-hue",
     ]);
 
     for (const path of sources(".css", INDEX)) {

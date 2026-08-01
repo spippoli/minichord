@@ -15,7 +15,7 @@ import type { Plate as PlateModel } from "./plates";
  * where controls go, not a boundary holding a decision up. It is `role="group"`
  * labelled by its own heading, which is what fixes the ambiguous names —
  * `attack` and `waveform` exist in both the harp and the chord — by structure
- * rather than by lengthening 189 labels (SPEC.md 12.5).
+ * rather than by lengthening 188 labels (SPEC.md 12.5).
  *
  * **A folded plate still reports how many of its parameters were edited**:
  * folding hides noise, never state. The count reads the store, which a plate

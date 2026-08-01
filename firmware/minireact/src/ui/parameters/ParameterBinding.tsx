@@ -9,8 +9,8 @@ import { Control } from "./Control";
  *
  * The store's rules are *per address and over time*: the optimistic write, the
  * dump that overrules every value except the one under an active pointer, and
- * that exception falling away when the bank changes. Spread across 189 reading
- * controls, "the address under an active pointer" becomes 189 pieces of local
+ * that exception falling away when the bank changes. Spread across 188 reading
+ * controls, "the address under an active pointer" becomes 188 pieces of local
  * state; behind one binding it stays one field of the reducer.
  *
  * This is a legibility decision and not a performance one: a full dump

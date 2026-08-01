@@ -29,7 +29,7 @@ export type ControlKind =
 export const PICKER_ADDRESSES: ReadonlySet<number> = new Set([10, 12, 14, 16]);
 
 /**
- * The fourteen addresses whose values have names (SPEC.md 8.6): eleven
+ * The fourteen addresses whose values have names (SPEC.md 8.5): eleven
  * waveforms, the key signatures, and the two shufflings.
  *
  * The rule reads the labels rather than restating their addresses: a menu with

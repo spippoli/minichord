@@ -1,5 +1,4 @@
 import type {
-  CSSProperties,
   ReactNode,
   KeyboardEventHandler,
   MouseEventHandler,
@@ -7,7 +6,6 @@ import type {
 } from "react";
 
 import {
-  BANK_COLOR_ADDRESS,
   PICKER_RESTING_VALUE,
   format,
   labelsOf,
@@ -66,23 +64,10 @@ export type SlotProps = {
   onDragStart: () => void;
 };
 
-/** The hue the cap and the swatch are filled with, as a custom property. */
-function capHue(value: number): CSSProperties {
-  return { "--cap-hue": value } as CSSProperties;
-}
-
 /** The travel is continuous; the wire is not (SPEC.md 4.3). */
 const POSITION_STEP = 0.0001;
 
-/**
- * The fader: the continuous majority, and `bank color` (SPEC.md 8.5).
- *
- * `bank color` keeps its kind — the spectrum is a rendering, not a seventh
- * kind — and gains what the data cannot express: the slot carries the spectrum,
- * the cap is filled with the chosen hue, and a swatch at full saturation sits
- * beside it, because the firmware drives the physical LED at full saturation.
- * A 0..360 fader in a grey slot asks you to drag and guess.
- */
+/** The fader: the continuous majority (SPEC.md 8.1). */
 export function Fader({
   parameter,
   value,
@@ -90,12 +75,10 @@ export function Fader({
   onChange,
   onDragStart,
 }: SlotProps) {
-  const hue = parameter.address === BANK_COLOR_ADDRESS;
-
-  const fader = (
+  return (
     <input
       {...body}
-      className={`${styles.fader} ${hue ? styles.spectrum : ""}`}
+      className={styles.fader}
       type="range"
       min={0}
       max={1}
@@ -105,25 +88,11 @@ export function Fader({
       aria-valuetext={format(parameter, value)}
       aria-valuemin={wireMin(parameter)}
       aria-valuemax={wireMax(parameter)}
-      style={hue ? capHue(value) : undefined}
       onChange={(event) =>
         onChange(positionToWire(parameter, event.target.valueAsNumber))
       }
       onPointerDown={onDragStart}
     />
-  );
-
-  if (!hue) return fader;
-
-  return (
-    <span className={styles.withSwatch}>
-      {fader}
-      <span
-        className={styles.swatch}
-        style={capHue(value)}
-        aria-hidden="true"
-      />
-    </span>
   );
 }
 
@@ -146,7 +115,7 @@ export function Switch({ parameter, value, body, onChange }: SlotProps) {
 }
 
 /**
- * The menu: a small enumeration whose values have names (SPEC.md 8.6).
+ * The menu: a small enumeration whose values have names (SPEC.md 8.5).
  *
  * The labels are the domain's, in wire order, and the option's value *is* the
  * wire value. A value with no label — which the device should never send — is

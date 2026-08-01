@@ -8,7 +8,7 @@ const EXPECTED: Readonly<Record<ControlKind, number>> = {
   toggle: 6,
   select: 14,
   stepper: 11,
-  slider: 138,
+  slider: 137,
   picker: 4,
   sequencer: 16,
 };
@@ -20,7 +20,7 @@ function parameterAt(address: number) {
 }
 
 describe("the taxonomy is a checksum (SPEC.md 8.1)", () => {
-  it("sorts the 189 visible parameters into the counts the spec states", () => {
+  it("sorts the 188 visible parameters into the counts the spec states", () => {
     const counts = new Map<ControlKind, number>();
     for (const each of visibleParameters) {
       const kind = kindOf(each);
@@ -64,9 +64,6 @@ describe("the rules, in order, first match wins (SPEC.md 8.1)", () => {
 
   it("leaves the continuous majority to the fader", () => {
     expect(kindOf(parameterAt(24))).toBe("slider");
-    // `bank color` keeps its kind: the spectrum in the slot is a rendering,
-    // not a seventh kind (SPEC.md 8.5).
-    expect(kindOf(parameterAt(20))).toBe("slider");
   });
 
   it("keeps a picker a picker, whatever its range says", () => {
