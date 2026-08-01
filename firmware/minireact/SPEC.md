@@ -911,7 +911,9 @@ The Rythm plate's 21 parameters include the 16 sequencer columns, which are draw
   comparison, per §5.4.
 - **The five fiction addresses get one line in the dock**, not controls: harp volume, chord volume
   and the three potentiometer slots are physical knobs, and they were never controls in the legacy
-  editor either — they sit in the `hidden` group, emitted with `display: none`.
+  editor either — they sit in the `hidden` group, emitted with `display: none`. That group holds
+  **six**, not five: address 7 is hidden too, but it is the firmware version, a true value rather
+  than a fiction, and it gets no line. 195 parameters less those six leave the 189 controls of §8.1.
 
 ### 7.4 The two mouldings, and the bank hue
 
