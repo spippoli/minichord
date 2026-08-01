@@ -2,21 +2,40 @@ import { useId, useState } from "react";
 
 import { useAppState, useReadOnly, useRuntime } from "../runtimeContext";
 import styles from "./Banks.module.css";
+import { PresetCodes } from "./PresetCodes";
 
 /**
- * The maintenance area (SPEC.md 10.6): what repairs the device, kept away from
- * the row that edits it.
+ * The maintenance area (SPEC.md 10.6): what repairs the device and what carries
+ * a bank in and out of it, kept away from the row that edits it.
  *
- * A wipe takes a **typed confirmation** — a different friction, not merely more
- * of the same. It resets all twelve banks and it is not a gesture of editing:
- * it exists for corrupt flash. Arming in place, the reset's confirmation, would
- * put the largest blast radius in the app behind the same single extra click as
- * the smallest. The legacy asks nothing at all before either command.
+ * Three things live here and they are ordered by blast radius, smallest first:
+ * the preset code of the bank on screen, the field that replaces that bank, and
+ * the wipe that takes all twelve. The export sitting above the import is not
+ * arbitrary either — it is the safety net for the click below it (SPEC.md
+ * 11.4).
  *
- * The preset export and import fields of SPEC.md 11 belong here too, and arrive
- * with the ticket that raises them.
+ * The area is two boxes rather than one, and it has no heading of its own: the
+ * wipe has the only heading Appendix A gives, and inventing a second string to
+ * span both would be inventing a string.
  */
 export function Maintenance() {
+  return (
+    <>
+      <PresetCodes />
+      <WipeMemory />
+    </>
+  );
+}
+
+/**
+ * A wipe takes a **typed confirmation** — a different friction, not merely more
+ * of the same. It resets all twelve banks and it is not a gesture of editing:
+ * it exists for corrupt flash. Arming in place, the reset's and the import's
+ * confirmation, would put the largest blast radius in the app behind the same
+ * single extra click as the smallest. The legacy asks nothing at all before
+ * either command.
+ */
+function WipeMemory() {
   const runtime = useRuntime();
   const { parameters } = useAppState();
   const readOnly = useReadOnly();

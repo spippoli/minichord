@@ -120,7 +120,16 @@ export type StripNotice =
   /** A bank reset we issued came back. */
   | { readonly kind: "reset"; readonly bank: number }
   /** A memory wipe we issued came back. It names no bank: it took all twelve. */
-  | { readonly kind: "wiped" };
+  | { readonly kind: "wiped" }
+  /**
+   * A preset code was written and the repair round is over (SPEC.md 11.3).
+   *
+   * `diverged` is what two rounds of bulk write could not get to stick, and
+   * zero is the ordinary case rather than the absence of news: an import is a
+   * gesture with no other acknowledgement, and 189 messages that all landed are
+   * worth one line.
+   */
+  | { readonly kind: "preset-applied"; readonly diverged: number };
 
 export const initialParametersState: ParametersState = {
   values: null,
@@ -463,6 +472,27 @@ export function parametersReducer(
       // button is fixed only by a replug.
       if (state.pendingCommand === null) return { state, effects: [] };
       return { state: { ...state, pendingCommand: null }, effects: [] };
+
+    case "preset-applied":
+      // The notice is set here and nowhere else, on an event that by
+      // construction arrives *after* the dump closing the bulk write: set
+      // before it, the line would be replaced by that dump's own `null` and the
+      // user would be told nothing about the 189 messages they just sent.
+      //
+      // The reference is deliberately left alone. An import is an edit like any
+      // other — flash is untouched, the physical bank button gets the saved
+      // sound back — so every address it moved is owed an amber LED and a dock
+      // row (SPEC.md 10.3, 11.4).
+      return {
+        state: {
+          ...state,
+          lastLossNotice: {
+            kind: "preset-applied",
+            diverged: event.diverged,
+          },
+        },
+        effects: [],
+      };
 
     case "edit": {
       if (connection.status !== "connected" || !state.values) {

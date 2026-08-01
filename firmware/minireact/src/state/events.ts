@@ -65,6 +65,16 @@ export type AppEvent =
   | { type: "bank-command"; command: BankCommand }
   /** The window a flash command was given ran out with no dump in it. */
   | { type: "command-timeout" }
+  /**
+   * A preset code was written and the repair round is over (SPEC.md 11.3).
+   *
+   * It carries what the bulk write could not confirm, and it is an event rather
+   * than the return value of the intent because the line belongs in the strip:
+   * the one place the app speaks about what the device did (SPEC.md 9.7). It
+   * arrives *after* the dump that closed the write, so it is the last word on
+   * that round trip rather than something the next dump wipes out.
+   */
+  | { type: "preset-applied"; diverged: number }
   /** A pointer went down on a control: that address is now held (SPEC.md 5.3). */
   | { type: "pointer-down"; address: number }
   /** The pointer came up. There is only ever one, so it carries no address. */

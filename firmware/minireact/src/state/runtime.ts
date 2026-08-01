@@ -1,4 +1,4 @@
-import { BANK_ADDRESS } from "../domain";
+import { BANK_ADDRESS, presetWriteMap } from "../domain";
 import {
   MinichordTransport,
   type PortRef,
@@ -291,6 +291,25 @@ export class Runtime {
       },
       nextDump: () => this.nextDump(bank),
     })(values);
+  }
+
+  /**
+   * Write a decoded preset code to the device (SPEC.md 11.3).
+   *
+   * The whole of the intent: the map is the domain's — 189 declared addresses,
+   * never 1, never 2–7, never 255 — the round trips and the repair round are
+   * `bulkWrite`'s, and what is left over becomes the strip's line. This method
+   * is the seam between the three and holds no rule of its own.
+   *
+   * It resolves when there is nothing left to say, so the field that called it
+   * can stop saying "Applying…". What it resolves *with* is nothing: the count
+   * has already gone into the store, and a caller reading it a second time to
+   * compose its own message would be a second voice for one round trip
+   * (SPEC.md 9.7).
+   */
+  async applyPreset(values: readonly number[]): Promise<void> {
+    const { diverged } = await this.bulkWrite(presetWriteMap(values));
+    this.dispatch({ type: "preset-applied", diverged: diverged.length });
   }
 
   // -- internals -----------------------------------------------------------

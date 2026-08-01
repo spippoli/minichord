@@ -161,3 +161,32 @@ describe("the bank lines (SPEC.md 10.5, A.3)", () => {
     );
   });
 });
+
+describe("the preset lines (SPEC.md 11.3, A.3)", () => {
+  function saying(notice: StripNotice): string | null {
+    const state = connected();
+    return stripNotice({
+      ...state,
+      parameters: { ...state.parameters, lastLossNotice: notice },
+    });
+  }
+
+  it("acknowledges an import that landed whole", () => {
+    // 189 messages on a wire that confirms nothing: "it worked" is news.
+    expect(saying({ kind: "preset-applied", diverged: 0 })).toBe(
+      "Preset applied.",
+    );
+  });
+
+  it("states the divergence two repair rounds could not close", () => {
+    expect(saying({ kind: "preset-applied", diverged: 4 })).toBe(
+      "Preset applied, but 4 values did not take. Try again, or check the minichord.",
+    );
+  });
+
+  it("spells out the singular", () => {
+    expect(saying({ kind: "preset-applied", diverged: 1 })).toBe(
+      "Preset applied, but 1 value did not take. Try again, or check the minichord.",
+    );
+  });
+});
