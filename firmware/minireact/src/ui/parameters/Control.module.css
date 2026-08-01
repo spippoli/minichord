@@ -234,8 +234,3 @@
 .control[data-readonly] .window {
   cursor: not-allowed;
 }
-
-.control[data-readonly]:not([data-unequipped]) .fader::-webkit-slider-thumb,
-.control[data-readonly]:not([data-unequipped]) .rockerCap {
-  box-shadow: none;
-}

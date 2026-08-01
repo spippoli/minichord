@@ -54,6 +54,16 @@ export type ConnectionState = {
   readonly probing: PortRef | null;
   /** The last manual pick that stayed mute. */
   readonly mute: PortRef | null;
+  /**
+   * A re-probe is already out on the bus, so another one would be a second.
+   *
+   * Only `interrupted` needs it. Everywhere else the status is the guard — a
+   * discovery moves the gate to `searching`, and the next `ports-changed` finds
+   * nothing to do — but a reconnection stays `interrupted` throughout, and one
+   * unplug announces both halves of the device, so the bus event arrives twice
+   * for one plug.
+   */
+  readonly rediscovering: boolean;
   /** Dump requests still to spend before giving up (SPEC.md 5.9). */
   readonly dumpRetriesLeft: number;
 };
@@ -75,6 +85,7 @@ export const initialConnectionState: ConnectionState = {
   port: null,
   probing: null,
   mute: null,
+  rediscovering: false,
   dumpRetriesLeft: 0,
 };
 
@@ -112,6 +123,7 @@ function bindTo(state: ConnectionState, port: PortRef): Result {
       port,
       probing: null,
       mute: null,
+      rediscovering: false,
       candidates: [],
       dumpRetriesLeft: DUMP_RETRIES,
     },
@@ -183,7 +195,11 @@ export function connectionReducer(
       // bus again instead — statechange, re-probe, bind, dump (SPEC.md 9.5).
       // Indefinitely, and with no button: this event is the only trigger.
       if (state.status === "interrupted") {
-        return { state, effects: [{ type: "discover" }] };
+        if (state.rediscovering) return unchanged(state);
+        return {
+          state: { ...state, rediscovering: true },
+          effects: [{ type: "discover" }],
+        };
       }
       return unchanged(state);
 
@@ -297,7 +313,8 @@ function reconnectTo(
     answered.find((candidate) => candidate.name === previous?.name) ??
     (answered.length === 1 ? answered[0] : null);
 
-  const withPorts = { ...state, ports };
+  // Whatever it found, this probe is over: the next bus event is a new one.
+  const withPorts = { ...state, ports, rediscovering: false };
   if (!port) return { state: withPorts, effects: [] };
   return bindTo(withPorts, port);
 }
@@ -317,7 +334,10 @@ function connectionChanged(state: ConnectionState, connected: boolean): Result {
   if (!connected) {
     // The gate never comes back: by now there are values worth looking at.
     if (state.status !== "connected") return unchanged(state);
-    return { state: { ...state, status: "interrupted" }, effects: [] };
+    return {
+      state: { ...state, status: "interrupted", rediscovering: false },
+      effects: [],
+    };
   }
   // The bound port coming back raises nothing of its own. It is reported from
   // the same `statechange` as `ports-changed`, which arrives first and has

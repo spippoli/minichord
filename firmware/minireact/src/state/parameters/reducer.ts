@@ -59,7 +59,7 @@ export type ParametersState = {
    * "stated once" means in a store: the line stands until the next dump
    * replaces it, and no timer takes it away.
    */
-  readonly lastLossNotice: LossNotice | null;
+  readonly lastLossNotice: StripNotice | null;
 };
 
 /**
@@ -67,8 +67,13 @@ export type ParametersState = {
  *
  * Data, not a sentence: the wording, the bank number and the singular of
  * "1 unsaved change" are `ui/`'s, and this slice does not compose text.
+ *
+ * It rides on the field SPEC.md 5.5 calls `lastLossNotice`, and it is named for
+ * the strip rather than for the loss: a return that cost nothing is still one
+ * of these, because what the strip owes the user about a return is one line
+ * either way.
  */
-export type LossNotice = {
+export type StripNotice = {
   /** The device came back after an interruption (SPEC.md 9.5). */
   readonly kind: "reconnected";
   /** The raw value at address 1 in the dump that came back. */
@@ -298,7 +303,7 @@ function reconnectionNotice(
   state: ParametersState,
   values: readonly number[],
   connection: ConnectionView,
-): LossNotice | null {
+): StripNotice | null {
   if (connection.before !== "interrupted") return null;
   const lost = editBuffer(state).filter(
     (row) => row.current !== values[row.parameter.address],

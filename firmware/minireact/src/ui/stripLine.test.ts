@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { BANK_ADDRESS, FIRMWARE_VERSION_ADDRESS } from "../domain";
 import { PARAMETER_COUNT } from "../transport";
 import type { AppState } from "../state";
-import { stripLine } from "./stripLine";
+import { stripLine, stripNotice } from "./stripLine";
 
 /** Connected to a port, on bank 3, with a store behind it. */
 function connected(): AppState {
@@ -19,6 +19,7 @@ function connected(): AppState {
       port: { id: "a", name: "minichord MIDI 1" },
       probing: null,
       mute: null,
+      rediscovering: false,
       dumpRetriesLeft: 0,
     },
     parameters: { values, stored: values, held: null, lastLossNotice: null },
@@ -47,7 +48,7 @@ describe("the strip (SPEC.md A.3)", () => {
   it("says only the bank when the reconnection cost nothing", () => {
     const state = connected();
     expect(
-      stripLine({
+      stripNotice({
         ...state,
         parameters: {
           ...state.parameters,
@@ -60,7 +61,7 @@ describe("the strip (SPEC.md A.3)", () => {
   it("states the reboot, the bank and what it took", () => {
     const state = connected();
     expect(
-      stripLine({
+      stripNotice({
         ...state,
         parameters: {
           ...state.parameters,
@@ -75,7 +76,7 @@ describe("the strip (SPEC.md A.3)", () => {
   it("spells out the singular", () => {
     const state = connected();
     expect(
-      stripLine({
+      stripNotice({
         ...state,
         parameters: {
           ...state.parameters,
@@ -87,18 +88,37 @@ describe("the strip (SPEC.md A.3)", () => {
     );
   });
 
-  it("says the wire is gone even with a notice still standing", () => {
+  it("has nothing to say by itself, nearly always", () => {
+    expect(stripNotice(connected())).toBeNull();
+  });
+
+  it("drops the notice while the wire is out, and says so instead", () => {
     // A second interruption, before anything replaced the line the first one
-    // left: what is true now wins over what was true a moment ago.
+    // left: "Reconnected" beside "Disconnected" is the app contradicting itself.
+    const state = connected();
+    const gone = {
+      connection: { ...state.connection, status: "interrupted" as const },
+      parameters: {
+        ...state.parameters,
+        lastLossNotice: { kind: "reconnected" as const, bank: 0, lost: 2 },
+      },
+    };
+    expect(stripNotice(gone)).toBeNull();
+    expect(stripLine(gone)).toContain("Disconnected");
+  });
+
+  it("keeps saying where the connection stands under a notice", () => {
+    // Nothing clears a notice but the next dump, and the firmware version is
+    // the only explanation for an unequipped slot (SPEC.md 9.6).
     const state = connected();
     expect(
       stripLine({
-        connection: { ...state.connection, status: "interrupted" },
+        ...state,
         parameters: {
           ...state.parameters,
-          lastLossNotice: { kind: "reconnected", bank: 0, lost: 2 },
+          lastLossNotice: { kind: "reconnected", bank: 2, lost: 3 },
         },
       }),
-    ).toContain("Disconnected");
+    ).toBe("minichord MIDI 1 · firmware 8 · bank 3");
   });
 });

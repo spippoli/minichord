@@ -28,3 +28,15 @@ export function useAppState(): AppState {
   if (!state) throw new Error("useAppState outside RuntimeProvider");
   return state;
 }
+
+/**
+ * Whether an edit would be refused: no wire, so nothing may be moved.
+ *
+ * One reading of one rule (SPEC.md 5.2, 9.4), because it has several readers —
+ * both bindings and the dock — and "what counts as writable" spread across them
+ * is the same rule written four times, differing on the fourth. It renders the
+ * refusal; the reducer is what makes it.
+ */
+export function useReadOnly(): boolean {
+  return useAppState().connection.status !== "connected";
+}

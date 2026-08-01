@@ -29,7 +29,7 @@ export {
 } from "./parameters/reducer";
 export type {
   EditedParameter,
-  LossNotice,
+  StripNotice,
   ParametersState,
 } from "./parameters/reducer";
 

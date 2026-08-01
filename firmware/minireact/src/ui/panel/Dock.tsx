@@ -2,7 +2,7 @@ import { useId, useState } from "react";
 
 import { format } from "../../domain";
 import { editBuffer } from "../../state";
-import { useAppState, useRuntime } from "../runtimeContext";
+import { useAppState, useReadOnly, useRuntime } from "../runtimeContext";
 import { focusParameter } from "./focusParameter";
 import styles from "./Panel.module.css";
 
@@ -38,7 +38,7 @@ export function Dock({
   backTo: string;
 }) {
   const runtime = useRuntime();
-  const { parameters, connection } = useAppState();
+  const { parameters } = useAppState();
   const headingId = useId();
 
   /**
@@ -52,7 +52,7 @@ export function Dock({
   // The reducer refuses edits with no wire (SPEC.md 5.2) and `bulkWrite` refuses
   // to go around it; drawing the buttons dead is a rendering of that fact, not
   // the authority for it.
-  const writable = connection.status === "connected";
+  const writable = !useReadOnly();
 
   /**
    * Discarding unsaved changes is just re-sending the reference of SPEC.md 10.3

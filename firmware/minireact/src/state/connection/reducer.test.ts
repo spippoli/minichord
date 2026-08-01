@@ -336,6 +336,26 @@ describe("mid-session (SPEC.md 9.4, 9.8)", () => {
     expect(run([dump], back.state).state.status).toBe("connected");
   });
 
+  it("puts one probe on the bus per plug, not one per announcement", () => {
+    // A real bus announces both halves of the device, and one unplug is one
+    // event: a second discovery would collide with the first inside its window.
+    const twice = run(
+      [{ type: "ports-changed" }, { type: "ports-changed" }],
+      interrupted(),
+    );
+    expect(twice.effects).toEqual([]);
+
+    // And the next plug is a new one, once the probe has answered.
+    const answered = run(
+      [
+        { type: "probe-results", answered: [], ports: [] },
+        { type: "ports-changed" },
+      ],
+      twice.state,
+    );
+    expect(answered.effects).toEqual([{ type: "discover" }]);
+  });
+
   it("raises nothing of its own when the bound port reports itself back", () => {
     // One plug, one discovery: `ports-changed` comes off the same statechange
     // and has already started it.
