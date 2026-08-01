@@ -43,7 +43,7 @@ const COLUMNS: readonly Parameter[] = Array.from(
 
 export function SequencerBinding() {
   const runtime = useRuntime();
-  const { parameters } = useAppState();
+  const { parameters, connection } = useAppState();
   const values = parameters.values;
 
   // No device, no state: the app before the first dump is the gate (SPEC.md
@@ -71,6 +71,9 @@ export function SequencerBinding() {
       // The sixteen columns share one `introduction_version`, so the grid is
       // equipped or not as one thing.
       unequipped={!isAvailable(COLUMNS[0], version)}
+      // With no wire the reducer refuses the edit (SPEC.md 5.2, 9.4); the grid
+      // stays readable, LEDs included, which is the point of not freezing it.
+      readOnly={connection.status !== "connected"}
       onToggle={(step, note, on) => {
         const address = rhythmStepAddress(step);
         runtime.setParameter(

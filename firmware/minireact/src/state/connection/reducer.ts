@@ -95,12 +95,20 @@ function fillStore(): Effect[] {
   return [{ type: "request-dump" }, { type: "schedule-dump-retry" }];
 }
 
-/** Bind a port and start the two round trips that fill the store. */
+/**
+ * Bind a port and start the two round trips that fill the store.
+ *
+ * The status it lands on is the one it came from: from the gate a bind is
+ * `searching` until the dump lands, and from `interrupted` it stays
+ * `interrupted` — a reconnection re-probes and re-binds by the same path as a
+ * first connect (SPEC.md 9.5), and `searching` is a gate state, which a
+ * mid-session disconnect may never return to (SPEC.md 9.1).
+ */
 function bindTo(state: ConnectionState, port: PortRef): Result {
   return {
     state: {
       ...state,
-      status: "searching",
+      status: state.status === "interrupted" ? "interrupted" : "searching",
       port,
       probing: null,
       mute: null,
@@ -163,12 +171,21 @@ export function connectionReducer(
     case "ports-changed":
       // The exit `no-device` is waiting for: something was plugged in, so ask
       // the bus again rather than making the user press Try again.
-      if (state.status !== "no-device" || state.probing)
-        return unchanged(state);
-      return {
-        state: { ...state, status: "searching", mute: null },
-        effects: [{ type: "discover" }],
-      };
+      if (state.status === "no-device" && !state.probing) {
+        return {
+          state: { ...state, status: "searching", mute: null },
+          effects: [{ type: "discover" }],
+        };
+      }
+      // And the exit `interrupted` is waiting for. A re-enumeration is not the
+      // same port coming back: the bus hands out new ids, so the port we hold
+      // is stale and asking it for a dump would write into nothing. We ask the
+      // bus again instead — statechange, re-probe, bind, dump (SPEC.md 9.5).
+      // Indefinitely, and with no button: this event is the only trigger.
+      if (state.status === "interrupted") {
+        return { state, effects: [{ type: "discover" }] };
+      }
+      return unchanged(state);
 
     case "transport-connection":
       return connectionChanged(state, event.connected);
@@ -236,6 +253,9 @@ function probeResults(
   answered: readonly PortRef[],
   ports: readonly PortRef[],
 ): Result {
+  if (state.status === "interrupted") {
+    return reconnectTo(state, answered, ports);
+  }
   if (state.status !== "searching") return unchanged(state);
   const withPorts = { ...state, ports };
   if (answered.length === 0) {
@@ -249,6 +269,37 @@ function probeResults(
     state: { ...withPorts, status: "choose", candidates: answered, port: null },
     effects: [],
   };
+}
+
+/**
+ * The same answers, read mid-session: who to bind so the editor comes back.
+ *
+ * The gate's table does not apply here, because two of its three outcomes are
+ * gate states and this may not return to the gate (SPEC.md 9.1). Silence is not
+ * `no-device` — the strip already says we are waiting and we wait indefinitely
+ * — and several answers are not `choose`: the user picked a port before the
+ * cable moved, and being asked again for a device that never went away would be
+ * a question raised by our own bookkeeping.
+ *
+ * So the previous binding decides, by id and then by name: a reseated cable
+ * keeps its id, a re-enumeration usually keeps the name the OS invented for it.
+ * Failing both, only an unambiguous single answer is bound. Anything else waits
+ * for the next `statechange`, which costs nothing and invents nothing.
+ */
+function reconnectTo(
+  state: ConnectionState,
+  answered: readonly PortRef[],
+  ports: readonly PortRef[],
+): Result {
+  const previous = state.port;
+  const port =
+    answered.find((candidate) => candidate.id === previous?.id) ??
+    answered.find((candidate) => candidate.name === previous?.name) ??
+    (answered.length === 1 ? answered[0] : null);
+
+  const withPorts = { ...state, ports };
+  if (!port) return { state: withPorts, effects: [] };
+  return bindTo(withPorts, port);
 }
 
 function pick(state: ConnectionState, port: PortRef): Result {
@@ -268,13 +319,11 @@ function connectionChanged(state: ConnectionState, connected: boolean): Result {
     if (state.status !== "connected") return unchanged(state);
     return { state: { ...state, status: "interrupted" }, effects: [] };
   }
-  if (state.status !== "interrupted" || !state.port) return unchanged(state);
-  // Still `interrupted` until a dump lands: the wire being back is not the same
-  // as the store being true.
-  return {
-    state: { ...state, dumpRetriesLeft: DUMP_RETRIES },
-    effects: fillStore(),
-  };
+  // The bound port coming back raises nothing of its own. It is reported from
+  // the same `statechange` as `ports-changed`, which arrives first and has
+  // already started the re-probe; acting on both would put two discoveries on
+  // the bus for one plug, and the second would bind a port already bound.
+  return unchanged(state);
 }
 
 function dumpTimeout(state: ConnectionState): Result {

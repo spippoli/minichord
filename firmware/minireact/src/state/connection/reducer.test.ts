@@ -294,6 +294,12 @@ describe("the dump, and the one retry (SPEC.md 5.9)", () => {
   });
 });
 
+/** Connected, then the cable went away: read-only, and waiting (SPEC.md 9.4). */
+function interrupted(): ConnectionState {
+  return run([{ type: "transport-connection", connected: false }], connected())
+    .state;
+}
+
 describe("mid-session (SPEC.md 9.4, 9.8)", () => {
   it("goes read-only rather than back to the gate", () => {
     const { state } = run(
@@ -304,31 +310,72 @@ describe("mid-session (SPEC.md 9.4, 9.8)", () => {
     expect(state.port).toEqual(PORT_A);
   });
 
-  it("asks for a dump when the wire comes back, and stays interrupted until it lands", () => {
-    const gone = run(
-      [{ type: "transport-connection", connected: false }],
-      connected(),
-    ).state;
-    const back = run([{ type: "transport-connection", connected: true }], gone);
+  it("re-probes the bus when it changes, rather than asking a stale port", () => {
+    const back = run([{ type: "ports-changed" }], interrupted());
     expect(back.state.status).toBe("interrupted");
+    expect(back.effects).toEqual([{ type: "discover" }]);
+  });
+
+  it("binds what answered and stays interrupted until its dump lands", () => {
+    // A re-enumeration: the same device, on ids the bus has just invented.
+    const REBORN: PortRef = { id: "a2", name: "minichord MIDI 1" };
+    const back = run(
+      [
+        { type: "ports-changed" },
+        { type: "probe-results", answered: [REBORN], ports: [REBORN] },
+      ],
+      interrupted(),
+    );
+    expect(back.state.status).toBe("interrupted");
+    expect(back.state.port).toEqual(REBORN);
     expect(back.effects).toEqual([
+      { type: "bind", port: REBORN },
       { type: "request-dump" },
       { type: "schedule-dump-retry" },
     ]);
     expect(run([dump], back.state).state.status).toBe("connected");
   });
 
-  it("keeps waiting rather than falling back to the gate when the retry expires", () => {
-    const waiting = run(
+  it("raises nothing of its own when the bound port reports itself back", () => {
+    // One plug, one discovery: `ports-changed` comes off the same statechange
+    // and has already started it.
+    const back = run(
+      [{ type: "transport-connection", connected: true }],
+      interrupted(),
+    );
+    expect(back.effects).toEqual([]);
+  });
+
+  it("waits indefinitely rather than falling back to the gate, whatever answers", () => {
+    const silence = run(
       [
-        { type: "transport-connection", connected: false },
-        { type: "transport-connection", connected: true },
+        { type: "ports-changed" },
+        { type: "probe-results", answered: [], ports: [OTHER] },
         { type: "dump-timeout" },
         { type: "dump-timeout" },
       ],
-      connected(),
+      interrupted(),
     );
-    expect(waiting.state.status).toBe("interrupted");
+    expect(silence.state.status).toBe("interrupted");
+    expect(silence.state.port).toEqual(PORT_A);
+  });
+
+  it("goes back to the port it had when two answer, and asks nobody", () => {
+    const OTHER_CHORD: PortRef = { id: "z", name: "minichord MIDI 1 (2)" };
+    const back = run(
+      [
+        { type: "ports-changed" },
+        {
+          type: "probe-results",
+          answered: [OTHER_CHORD, PORT_A],
+          ports: [OTHER_CHORD, PORT_A],
+        },
+      ],
+      interrupted(),
+    );
+    expect(back.state.status).toBe("interrupted");
+    expect(back.state.port).toEqual(PORT_A);
+    expect(back.effects[0]).toEqual({ type: "bind", port: PORT_A });
   });
 
   it("says nothing on screen about a malformed message", () => {

@@ -27,6 +27,10 @@ export {
   firmwareVersion,
   isEdited,
 } from "./parameters/reducer";
-export type { EditedParameter, ParametersState } from "./parameters/reducer";
+export type {
+  EditedParameter,
+  LossNotice,
+  ParametersState,
+} from "./parameters/reducer";
 
 export type { BulkWriteResult } from "./bulkWrite";

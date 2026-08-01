@@ -22,7 +22,7 @@ import { Control } from "./Control";
  */
 export function ParameterBinding({ parameter }: { parameter: Parameter }) {
   const runtime = useRuntime();
-  const { parameters } = useAppState();
+  const { parameters, connection } = useAppState();
   const values = parameters.values;
 
   // No device, no state: the app before the first dump is the gate, so a
@@ -44,6 +44,10 @@ export function ParameterBinding({ parameter }: { parameter: Parameter }) {
       parameter={parameter}
       value={values[parameter.address]}
       unequipped={!isAvailable(parameter, version)}
+      // With no wire the reducer refuses the edit (SPEC.md 5.2, 9.4); this
+      // draws that refusal, and the value and both LEDs stay readable, which
+      // is the point of not freezing the editor behind an overlay.
+      readOnly={connection.status !== "connected"}
       divergence={divergence}
       description={describeParameter(parameter, {
         firmwareVersion: version,

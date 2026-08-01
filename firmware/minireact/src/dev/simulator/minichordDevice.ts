@@ -155,4 +155,16 @@ export class MinichordDevice {
   switchBank(bank: number): Uint8Array {
     return this.loadBank(((bank % BANK_COUNT) + BANK_COUNT) % BANK_COUNT);
   }
+
+  /**
+   * Power cycle: RAM is gone and the current bank is read back from flash.
+   *
+   * This is what a re-enumeration means for the values -- whatever the app had
+   * sent and not saved is not in the file, so it does not come back. The dump
+   * `load_config` ends with is returned like any other, and the caller decides
+   * whether anything was listening (SPEC.md 9.5).
+   */
+  reboot(): Uint8Array {
+    return this.loadBank(this.bank);
+  }
 }

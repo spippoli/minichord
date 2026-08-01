@@ -66,7 +66,7 @@ function nextDump(transport: MinichordTransport): Promise<readonly number[]> {
 
 /** Reach the fake input to push bytes the device would never send. */
 function deliver(simulator: MinichordSimulator, bytes: number[]): void {
-  const input = simulator.access.inputs.get("sim-in-1") as unknown as {
+  const input = simulator.controlInput as unknown as {
     onmidimessage: ((event: { data: Uint8Array }) => void) | null;
   };
   input.onmidimessage?.({ data: Uint8Array.from(bytes) });
@@ -74,7 +74,7 @@ function deliver(simulator: MinichordSimulator, bytes: number[]): void {
 
 /** Watch the bytes the transport actually puts on the wire. */
 function tapOutput(simulator: MinichordSimulator): number[][] {
-  const output = simulator.access.outputs.get("sim-out-1") as MIDIOutput;
+  const output = simulator.controlOutput;
   const sent: number[][] = [];
   const send = output.send.bind(output);
   output.send = (data: number[] | Uint8Array, at?: number) => {
@@ -88,9 +88,7 @@ function tapOutput(simulator: MinichordSimulator): number[][] {
  * Fire a `statechange` for one port, the way a real bus fires one for each half
  * of a device: the simulator only announces the input half by itself.
  */
-function fireStateChange(simulator: MinichordSimulator, portId: string): void {
-  const port =
-    simulator.access.inputs.get(portId) ?? simulator.access.outputs.get(portId);
+function fireStateChange(simulator: MinichordSimulator, port: MIDIPort): void {
   const event = new Event("statechange");
   Object.defineProperty(event, "port", { value: port, configurable: true });
   simulator.access.dispatchEvent(event);
@@ -363,7 +361,7 @@ describe("connection", () => {
     const events = record(transport);
     simulator.disconnect();
     // The real bus announces the output half too; it is the same unplug.
-    fireStateChange(simulator, "sim-out-1");
+    fireStateChange(simulator, simulator.controlOutput);
     expect(events).toEqual([{ type: "connection", connected: false }]);
   });
 

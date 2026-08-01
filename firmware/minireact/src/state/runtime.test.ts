@@ -13,6 +13,7 @@ import {
   type TransportEvent,
   type Unsubscribe,
 } from "../transport";
+import { editBuffer } from "./parameters/reducer";
 import { Runtime, type RuntimeTransport } from "./runtime";
 
 /**
@@ -311,6 +312,77 @@ describe("mid-session (SPEC.md 9.4, 9.5)", () => {
     h.simulator.reconnect();
     await until(() => statusOf(h.runtime) === "connected");
     expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+
+  it("never re-opens the gate while it waits, however long that is", async () => {
+    const h = harness();
+    await connect(h);
+    h.simulator.disconnect();
+
+    // Past both dump requests and their retries, with nothing on the wire.
+    await until(() => statusOf(h.runtime) === "interrupted");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(statusOf(h.runtime)).toBe("interrupted");
+    expect(h.runtime.getState().parameters.values).not.toBeNull();
+  });
+
+  it("re-probes and re-binds when the device comes back on new port ids", async () => {
+    // The re-enumeration of SPEC.md 1.5: the cable was never touched, and the
+    // port the runtime is holding no longer exists.
+    const h = harness();
+    await connect(h);
+    const first = h.runtime.getState().connection.port?.id;
+
+    h.simulator.reenumerate();
+    await until(() => statusOf(h.runtime) === "connected");
+
+    const { connection, parameters } = h.runtime.getState();
+    expect(connection.port?.id).not.toBe(first);
+    expect(connection.port?.name).toBe("minichord MIDI 1");
+    expect(parameters.values).not.toBeNull();
+  });
+
+  it("states the loss once, with the bank, and the dock clears (SPEC.md 9.5)", async () => {
+    const h = harness();
+    await connect(h);
+
+    const stored = h.runtime.getState().parameters.values?.[40] ?? 0;
+    h.runtime.setParameter(40, stored + 3);
+    h.frame();
+    expect(editBuffer(h.runtime.getState().parameters)).toHaveLength(1);
+
+    // A reboot: the bank is read back from flash, so the edit is gone from the
+    // device as well, and the strip would otherwise read like good news.
+    h.simulator.reenumerate();
+    await until(() => statusOf(h.runtime) === "connected");
+
+    const { parameters } = h.runtime.getState();
+    expect(parameters.lastLossNotice).toEqual({
+      kind: "reconnected",
+      bank: parameters.values?.[BANK_ADDRESS],
+      lost: 1,
+    });
+    expect(parameters.values?.[40]).toBe(stored);
+    expect(editBuffer(parameters)).toEqual([]);
+  });
+
+  it("says nothing was lost when a reseated cable brings the edits back", async () => {
+    const h = harness();
+    await connect(h);
+    const stored = h.runtime.getState().parameters.values?.[40] ?? 0;
+    h.runtime.setParameter(40, stored + 3);
+    h.frame();
+
+    // The device never rebooted: it still holds what it was sent.
+    h.simulator.disconnect();
+    await until(() => statusOf(h.runtime) === "interrupted");
+    h.simulator.reconnect();
+    await until(() => statusOf(h.runtime) === "connected");
+
+    const { parameters } = h.runtime.getState();
+    expect(parameters.lastLossNotice?.lost).toBe(0);
+    expect(parameters.values?.[40]).toBe(stored + 3);
+    expect(editBuffer(parameters)).toHaveLength(1);
   });
 });
 
