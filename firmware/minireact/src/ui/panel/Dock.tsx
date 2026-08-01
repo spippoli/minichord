@@ -59,14 +59,32 @@ export function Dock({
    * through `bulkWrite` (SPEC.md 10.4, 5.8) — and only the addresses that
    * actually diverged, since the rest of the reference is already on the
    * device and addresses 2–7 must never be written at all.
+   *
+   * **The count is read, and the rows are what says it.** `bulkWrite` resolves
+   * only after the confirming dump has been through the store, so an address
+   * that did not take still differs from its stored value and keeps its row:
+   * the dock is the report, and it is exact rather than a number. Nothing is
+   * announced in the strip — A.3 carries a divergence line for the preset
+   * import and none for a revert, and inventing one here would be this
+   * component composing device messages of its own (SPEC.md 9.7).
+   *
+   * What has no place on screen goes to the console: a revert that came back
+   * short means the device dropped writes twice, which is a fact about the
+   * wire and not something the panel can ask the user to do anything about.
    */
   async function revertAll() {
     if (reverting || edited.length === 0) return;
     setReverting(true);
     try {
-      await runtime.bulkWrite(
+      const { diverged } = await runtime.bulkWrite(
         new Map(edited.map((row) => [row.parameter.address, row.stored])),
       );
+      if (diverged.length > 0) {
+        console.warn(
+          `minichord: ${diverged.length} of ${edited.length} reverted values did not take`,
+          diverged,
+        );
+      }
     } finally {
       setReverting(false);
     }

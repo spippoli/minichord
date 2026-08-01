@@ -1,3 +1,4 @@
+import { BANK_ADDRESS } from "../domain";
 import {
   MinichordTransport,
   type PortRef,
@@ -211,9 +212,13 @@ export class Runtime {
    * runtime contributes only the wire and the waiting, neither of which a pure
    * module can hold.
    *
-   * It **bypasses the coalescing queue on purpose**: that queue exists to keep
-   * a 1000 Hz mouse off the wire, and a bulk write is 189 distinct addresses
-   * that would each survive coalescing anyway (SPEC.md 5.7).
+   * It **does not queue behind the coalescing frame**: that queue exists to
+   * keep a 1000 Hz mouse off the wire, and a bulk write is 189 distinct
+   * addresses that would each survive coalescing anyway (SPEC.md 5.7). But it
+   * **drains the queue first rather than jumping it** — a write still waiting
+   * for its frame, a slider let go in the same frame as the click, would
+   * otherwise reach the device *after* these sends and re-apply the very value
+   * being reverted. Draining is not pacing: the queue's own reason is intact.
    *
    * With no wire it writes nothing and says so. The reducer refuses single
    * edits while the connection is interrupted (SPEC.md 5.2), and a bulk write
@@ -227,6 +232,13 @@ export class Runtime {
       });
     }
 
+    this.cancelPendingFlush();
+    this.flushWrites();
+
+    // The bank the write is about, read before the first send: a dump carrying
+    // another one is somebody else's (see `nextDump`).
+    const bank = this.state.parameters.values?.[BANK_ADDRESS];
+
     return makeBulkWrite({
       send: (address, value) => {
         this.transport.sendParameter(address, value);
@@ -234,7 +246,7 @@ export class Runtime {
       requestDump: () => {
         this.transport.requestDump();
       },
-      nextDump: () => this.nextDump(),
+      nextDump: () => this.nextDump(bank),
     })(values);
   }
 
@@ -365,17 +377,38 @@ export class Runtime {
   }
 
   /**
-   * The next dump, or `null` once the window of SPEC.md 1.6 has gone by.
+   * The next dump about `bank`, or `null` once the window of SPEC.md 1.6 has
+   * gone by.
    *
    * The dump is a subscription rather than the answer to a request — the device
-   * announces dumps nobody asked for, and one cannot be told from the other
-   * (SPEC.md 1.3). This is the one place that fact is turned into a promise,
-   * and it is deliberately not a general "solicited dump" abstraction: a bulk
-   * write is the only caller that needs to wait for one.
+   * announces dumps nobody asked for, and one cannot be told from the other by
+   * inspecting the payload, which SPEC.md 1.3 says never to try. This is the
+   * one place that fact is turned into a promise, and it is deliberately not a
+   * general "solicited dump" abstraction: a bulk write is the only caller that
+   * needs to wait for one.
+   *
+   * **One announcement can still be told apart, and it is the one that hurts.**
+   * Every unsolicited dump follows something that reloads the device from flash
+   * — a save, a reset, a wipe, a press of the physical preset buttons, a boot —
+   * and the ones we did not cause ourselves arrive on a *different bank*. Such
+   * a dump describes a state that has nothing to do with what was just sent, so
+   * taking it as the answer would report every address as diverged and then
+   * re-send the previous bank's values over the new one. Reading address 1 is
+   * not inspecting the payload for what changed: it is the same question
+   * SPEC.md 10.3 already asks of every dump, about what caused it.
+   *
+   * A same-bank announcement remains indistinguishable and stays that way. It
+   * costs a repair round and nothing else, which is what the round is for.
    */
-  private nextDump(): Promise<readonly number[] | null> {
+  private nextDump(
+    bank: number | undefined,
+  ): Promise<readonly number[] | null> {
     return new Promise((resolve) => {
       const settle = (values: readonly number[] | null) => {
+        // Not ours: keep waiting, and let the window run as it was.
+        if (values && bank !== undefined && values[BANK_ADDRESS] !== bank) {
+          return;
+        }
         clearTimeout(timer);
         this.dumpWaiters.delete(settle);
         resolve(values);
