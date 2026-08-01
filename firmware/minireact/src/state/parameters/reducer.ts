@@ -134,7 +134,9 @@ export function isEdited(state: ParametersState, address: number): boolean {
  *
  * The same five slots plus the firmware version are excluded, for the same
  * reason: the store holds a fiction there, and the fiction is nobody's factory
- * default.
+ * default. So is anything the panel does not draw, `PARAMETER_AT` being the
+ * source: an address with no control has no LED to light, and the bank hue is
+ * the one such address the wire still carries a real value at.
  */
 export function differsFromDefault(
   state: ParametersState,

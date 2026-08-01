@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { byAddress } from "../../domain";
+import { BANK_COLOR_ADDRESS, byAddress } from "../../domain";
 import { matchesQuery, platesOf, sectionMatchCount } from "./plates";
 
 /** The table of SPEC.md 7.2, verbatim: the plates in order, with their counts. */
@@ -61,9 +61,9 @@ describe("the plates of a section (SPEC.md 7.2)", () => {
   it("draws no control for the bank hue, in any section", () => {
     for (const section of ["global", "harp", "chord"] as const) {
       for (const plate of platesOf(section)) {
-        expect(plate.parameters.some((each) => each.address === 20)).toBe(
-          false,
-        );
+        expect(
+          plate.parameters.some((each) => each.address === BANK_COLOR_ADDRESS),
+        ).toBe(false);
       }
     }
   });
