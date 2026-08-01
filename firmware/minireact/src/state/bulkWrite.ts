@@ -10,11 +10,29 @@
  * and everything else is this module's.
  *
  * Callers build a map and read a count. They do not know a dump is involved,
- * and they do not each carry a copy of the exclusion list below.
+ * and they do not each carry a copy of the exclusion list — nor does this
+ * module, which imports the store's one derivation of it below.
  *
  * It lives in `state/` and not in `domain/` because it awaits round trips and
  * drives the transport, which is exactly what a pure layer cannot do.
  */
+
+/**
+ * Which addresses a comparison may look at (SPEC.md 5.4) comes from the store,
+ * which already derives it from the fiction it forces at 2–6 and from the
+ * firmware version at 7.
+ *
+ * **Getting this exclusion wrong is precisely the bug that would otherwise be
+ * written three times** — without it every round reports five or six phantom
+ * divergences and the repair never converges — so this module does not restate
+ * it either. A second copy here, written as two literals, would be that bug
+ * with a fourth author rather than a fourth caller.
+ *
+ * The exclusion is from the *comparison* only. Whether an address is written at
+ * all is the caller's business: the import declines to write these, the revert
+ * has no reason to hold them.
+ */
+import { isComparable } from "./parameters/reducer";
 
 /**
  * How many of the addresses this module could judge did land, and which ones
@@ -39,25 +57,6 @@ export type BulkWriteWire = {
   /** The next dump the device sends, or `null` if it stayed silent. */
   nextDump(): Promise<readonly number[] | null>;
 };
-
-/**
- * The addresses no comparison may look at (SPEC.md 5.4).
- *
- * 2–6 are the fiction the store asserts over the physical knobs and 7 is healed
- * by the firmware on every write. **Getting this exclusion wrong is precisely
- * the bug that would otherwise be written three times**: without it every round
- * reports five or six phantom divergences and the repair never converges.
- *
- * They are excluded from the *comparison* only. Whether an address is written
- * at all is the caller's business — the import declines to write these, the
- * revert has no reason to hold them.
- */
-const FIRST_EXCLUDED = 2;
-const LAST_EXCLUDED = 7;
-
-function isComparable(address: number): boolean {
-  return address < FIRST_EXCLUDED || address > LAST_EXCLUDED;
-}
 
 /**
  * Which of `among` the dump disagrees with.

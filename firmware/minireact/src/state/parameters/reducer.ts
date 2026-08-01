@@ -85,7 +85,7 @@ export const NEUTRALISED: ReadonlyMap<number, number> = new Map([
 ]);
 
 /**
- * The slots no comparison against the stored bank may look at (SPEC.md 7.3).
+ * The slots no comparison may look at (SPEC.md 5.4, 7.3).
  *
  * The five of SPEC.md 5.4 hold a fiction the store forces, so they never differ
  * and would never be edited; the firmware version is healed by the device on
@@ -97,6 +97,20 @@ const OUTSIDE_COMPARISON: ReadonlySet<number> = new Set([
 ]);
 
 /**
+ * Whether a comparison may look at this address at all.
+ *
+ * **This is the layer's one copy of that question**, and it is derived from
+ * `NEUTRALISED` rather than restated: the two LEDs above ask it, and so does
+ * `bulkWrite` (SPEC.md 5.8), whose own documentation is explicit that its three
+ * callers must not each carry a list of their own. Two encodings of the same
+ * six addresses — one derived, one written out — is precisely the bug that
+ * exclusion exists to prevent, arriving by another door.
+ */
+export function isComparable(address: number): boolean {
+  return !OUTSIDE_COMPARISON.has(address);
+}
+
+/**
  * Whether this address now differs from the bank as it was loaded — the amber
  * LED of SPEC.md 7.3, and the plate's edited count.
  *
@@ -105,7 +119,7 @@ const OUTSIDE_COMPARISON: ReadonlySet<number> = new Set([
  */
 export function isEdited(state: ParametersState, address: number): boolean {
   if (!state.values || !state.stored) return false;
-  if (OUTSIDE_COMPARISON.has(address)) return false;
+  if (!isComparable(address)) return false;
   return state.values[address] !== state.stored[address];
 }
 
@@ -127,7 +141,7 @@ export function differsFromDefault(
   address: number,
 ): boolean {
   if (!state.values) return false;
-  if (OUTSIDE_COMPARISON.has(address)) return false;
+  if (!isComparable(address)) return false;
 
   const parameter = PARAMETER_AT.get(address);
   if (!parameter) return false;
