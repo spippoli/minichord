@@ -146,9 +146,9 @@ an answer from an announcement by inspecting the payload, and is specified never
 
 `firmware/generator/parameters.json` declares **195 parameters** across those ranges, with globally
 unique addresses spanning 2–235. Six of them are in the `hidden` group (addresses 2–7) and are
-never drawn; **189 are visible**. Group order and address order do not coincide, and the section
-ranges above describe where a section's _visible_ parameters live, not a contiguous block the app
-may assume.
+never drawn, and the bank hue at 20 is read-only in this app (§7.4); **188 are drawn as controls**.
+Group order and address order do not coincide, and the section ranges above describe where a
+section's _visible_ parameters live, not a contiguous block the app may assume.
 
 **39 addresses in 2–235 carry no parameter at all**: 8, 9, 18, 19, 36–39, 109–119, 200–219. Nothing
 in `apply_audio_parameter` reads them, so writing them is inert — which is what makes them usable
@@ -259,7 +259,7 @@ Inside `state/` the same rule recurs at finer grain: two pure slices, `connectio
 - **CSS Modules**, co-located with the component they style, for component styles.
 - **CSS custom properties on the panel root** for the theme: the two mouldings and the bank hue
   (§7.4). Tailwind and vanilla-extract were both weighed and dropped — class-dense markup across
-  189 controls works against readability, and a build-time styling system is out of proportion to a
+  188 controls works against readability, and a build-time styling system is out of proportion to a
   few hundred lines of CSS.
 - **No runtime dependency beyond React** is added by this specification. In particular no state
   machine library: eight states do not repay a dependency, and the 256 values would not live inside
@@ -286,7 +286,7 @@ has actually occurred.
 
 **No component tests, no browser-level tests, no CI.** These are pure functions with no DOM and no
 MIDI, where a bug is silent and propagates all the way to hardware — the exact profile that repays
-test cost. The UI is 189 controls generated from a manifest, so component tests would mostly assert
+test cost. The UI is 188 controls generated from a manifest, so component tests would mostly assert
 React's own behaviour. End-to-end coverage is manual, against the simulator described in §2.5 and
 against a device.
 
@@ -488,7 +488,7 @@ interface Parameter {
 
 const parameters: readonly Parameter[]; // all 195, in file order
 const byAddress: ReadonlyMap<number, Parameter>; // lossless: addresses are unique
-const visibleParameters: readonly Parameter[]; // 189: group !== 'hidden'
+const visibleParameters: readonly Parameter[]; // 188: drawable — not 'hidden', not the bank hue
 function isAvailable(p: Parameter, firmwareVersion: number): boolean;
 ```
 
@@ -760,8 +760,8 @@ section opens the second half of the document instead of closing it. Hold these 
 single **binding** component per parameter. This is a legibility decision, not a performance one —
 §7.6 removed the performance argument. The store's rules are _per address and over time_: the
 optimistic write, the dump that overrules every value except the one under an active pointer, and
-that exception falling away when the bank changes. Spread across 189 reading controls, "the address
-under an active pointer" becomes 189 pieces of local state; in one binding it is one place.
+that exception falling away when the bank changes. Spread across 188 reading controls, "the address
+under an active pointer" becomes 188 pieces of local state; in one binding it is one place.
 
 Cost, stated: every dump repaints the whole mounted section. That is only admissible because it was
 measured (§7.6). If the one-section-at-a-time architecture ever changes, re-measure.
@@ -873,7 +873,7 @@ workbench won.
 
 ### 7.2 Sections, plates, folding
 
-- **Sections are tabs.** Exactly one section is mounted at a time: global (27 visible parameters),
+- **Sections are tabs.** Exactly one section is mounted at a time: global (26 visible parameters),
   harp (66), chord (96).
 - **Groups are collapsible plates** in a packed multi-column flow within the section, **all open by
   default**. `fold all` / `open all` act on the current section.
@@ -881,14 +881,14 @@ workbench won.
   never state.
 - **Groups are merged by name.** `group` is _not_ contiguous in `parameters.json` — the global
   "Settings" group appears in two blocks, and the legacy generator, grouping without sorting, draws
-  it twice (6 parameters, then 4). Merge into one plate of 10. This is a data quirk to absorb, not
-  a structure to reproduce.
+  it twice (6 parameters, then 4). Merge into one plate, of 9 once the bank hue is taken out of it
+  (§7.4). This is a data quirk to absorb, not a structure to reproduce.
 
 The plates, in order, are the groups as they first appear in the file:
 
 | section | plates                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| global  | Settings (10), MIDI (3), Effects (6), Potentiometer (8)                                                                                     |
+| global  | Settings (9), MIDI (3), Effects (6), Potentiometer (8)                                                                                      |
 | harp    | General (3), Oscillator (2), Envelope (6), Low pass filter (10), Transient (6), Tremolo (3), Vibrato (15), Effects (11), Output filter (10) |
 | chord   | General (3), Oscillator (16), Envelope (6), Low pass filter (13), Tremolo (4), Vibrato (16), Effects (11), Rythm (21), Output filter (6)    |
 
@@ -913,7 +913,8 @@ The Rythm plate's 21 parameters include the 16 sequencer columns, which are draw
   and the three potentiometer slots are physical knobs, and they were never controls in the legacy
   editor either — they sit in the `hidden` group, emitted with `display: none`. That group holds
   **six**, not five: address 7 is hidden too, but it is the firmware version, a true value rather
-  than a fiction, and it gets no line. 195 parameters less those six leave the 189 controls of §8.1.
+  than a fiction, and it gets no line. 195 parameters less those six, less the bank hue of §7.4,
+  leave the 188 controls of §8.1.
 
 ### 7.4 The two mouldings, and the bank hue
 
@@ -937,9 +938,15 @@ swapping roles between them. That cost is real and is accepted.
 > ([reasoning](https://github.com/spippoli/minichord/issues/16))
 
 **The bank hue reaches exactly one element: the bank LED in the strip.** Not the windows, not the
-lit surfaces, not the moulding. The hue is the bank's **identity** — the thing that tells you it is
-bank 7 without looking at the screen — and an identity belongs in one place rather than smeared
-across the surface being worked on. The twelve factory banks bear this out: they ship one hue each,
+lit surfaces, not the moulding — and **no control anywhere**: the hue is read-only in this app. It
+is decoded from every dump, it drives that one LED, and the panel draws nothing for it, which is why
+the global Settings plate is 9 and the drawn parameters are 188 rather than 189. Editing a bank's
+identity is not what this editor is for; the hue still travels in a preset code (§11.3) and is still
+pinned in the randomiser (§11.5).
+
+The hue is the bank's **identity** — the thing that tells you it is bank 7 without looking at the
+screen — and an identity belongs in one place rather than smeared across the surface being worked
+on. The twelve factory banks bear this out: they ship one hue each,
 spread around the circle at `0, 10, 30, 60, 110, 138, 175, 220, 253, 266, 310, 340`. That is a
 name, not a decoration.
 
@@ -1016,13 +1023,13 @@ The rules, in order, first match wins:
 | `toggle`    | 6     | an interrupter, not a two-position fader               |
 | `select`    | 14    | a small enumeration whose values have names            |
 | `stepper`   | 11    | a small ordinal with an order but no names             |
-| `slider`    | 138   | the continuous majority                                |
+| `slider`    | 137   | the continuous majority                                |
 | `picker`    | 4     | a value that is the SysEx address of another parameter |
 | `sequencer` | 16    | the 7-bit masks at 220–235, drawn as one grid          |
 
-**The counts are a checksum, not a listing.** They total 189 and are asserted by a Vitest test
+**The counts are a checksum, not a listing.** They total 188 and are asserted by a Vitest test
 against the real `parameters.json` — which is the point of writing them down. This document
-deliberately does not enumerate the 189 parameters: that would be a second source of truth,
+deliberately does not enumerate the 188 parameters: that would be a second source of truth,
 diverging from the build-time import at the first change to the generator.
 
 Where the value has a **shape**, the icon is the label (waveforms). Where it has a **name**, the
@@ -1038,7 +1045,7 @@ name is the label (key signatures, shufflings). Where it has neither, it stays a
 - **Double-click returns a control to its factory default.** The dock already offers "back to what
   is stored"; this is the other origin.
 - **Every tooltip lands in the single readout**, fed by hover _or_ keyboard focus, identically.
-  Tooltips run to 318 characters (median 37; 29 of the 189 exceed 80), so one fixed strip holds the
+  Tooltips run to 318 characters (median 37; 29 of the 188 exceed 80), so one fixed strip holds the
   longest without covering the controls being compared, and it is what makes the tooltip reachable
   without a mouse at all. The legacy delivers tooltips through the `title` attribute alone.
 - **A dropdown takes the readout's column** in the plate — a window repeating the word already on
@@ -1082,20 +1089,7 @@ address order, plus "none" at rest.
 Their `default_value` is **0, outside their own declared minimum of 21**. Any control here has to
 survive a value its declared range excludes — do not clamp it into range.
 
-### 8.5 `bank color` (address 20)
-
-The one parameter whose value _is_ a colour. It keeps its kind — a `slider`, so the counts above
-are untouched — and gains two things the data cannot express: **the slot carries the spectrum and
-the cap is filled with the chosen hue**, and a **swatch at full saturation** sits beside it, since
-the firmware drives the physical LED at full saturation. A 0..360 fader in a grey slot asks you to
-drag and guess.
-
-This holds even though the panel itself ignores the hue everywhere but the strip: the panel may
-ignore it, the device never does.
-
-`bank color` is **pinned in the randomiser** (§11.5).
-
-### 8.6 The named enumerations
+### 8.5 The named enumerations
 
 Fourteen addresses carry a named enumeration. **No label here was invented** — every one is read
 out of the firmware source or spelled out in the parameter's own tooltip. The labels themselves are
@@ -1123,7 +1117,7 @@ _Decided in: [Design the parameter control itself](https://github.com/spippoli/m
 and connection lives in one line of the top bar.**
 
 The store holds nothing until the first dump (§5.2), so there is nothing for an editor to draw; a
-panel of 189 empty controls is noise imitating an interface, and the legacy pays for the opposite
+panel of 188 empty controls is noise imitating an interface, and the legacy pays for the opposite
 choice with two variants of every control to maintain.
 
 **The gate is not a permanent shell.** Once the first dump lands it is gone, and a mid-session
@@ -1439,6 +1433,10 @@ written under the field, specific, and never in an alert.
 Values sitting at undeclared addresses in someone else's code are ignored, not propagated: the
 read-side mirror of the zeros written on the write side.
 
+That set is the manifest's, not the panel's: **address 20 is exported and imported like any other**,
+even though no control draws it (§7.4). A preset carries the bank hue it was designed with, and the
+repair round below judges it like the rest.
+
 Three addresses ranges are never written:
 
 - **2–7**: 2–6 are the fiction the store asserts and the confirming dump would overwrite anyway; 7
@@ -1508,14 +1506,14 @@ table order; on a `picker` it would pick a neighbouring _SysEx address_ (§8.4).
   preference, not a device fact — `parameters.json` is the contract shared with the firmware. It is
   grouped by the reason a list of numbers in JSON could not carry:
 
-| pinned                 | why                                                                                                                                                                                                                                                                               |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| everything below 19    | not sound                                                                                                                                                                                                                                                                         |
-| **20** (`bank color`)  | the bank's identity — a dice roll over the sound must not rename the bank, and the _physical_ LED moves too, and stays moved until the bank is saved or reloaded. The legacy's threshold is `idx < 19` while its own comment says 21, so today it rerolls the hue on every click. |
-| 32 (`led attenuation`) | the panel LED                                                                                                                                                                                                                                                                     |
-| 33, 34, 35             | musical rather than timbral choices                                                                                                                                                                                                                                               |
-| 41, 97, 197            | output gains — hearing                                                                                                                                                                                                                                                            |
-| 106, 107, 108          | MIDI routing                                                                                                                                                                                                                                                                      |
+| pinned                 | why                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| everything below 19    | not sound                                                                                                                                                                                                                                                                                                                                  |
+| **20** (`bank color`)  | the bank's identity — a dice roll over the sound must not rename the bank, and the _physical_ LED moves too, and stays moved until the bank is saved or reloaded — which is true whether or not a control draws it (§7.4). The legacy's threshold is `idx < 19` while its own comment says 21, so today it rerolls the hue on every click. |
+| 32 (`led attenuation`) | the panel LED                                                                                                                                                                                                                                                                                                                              |
+| 33, 34, 35             | musical rather than timbral choices                                                                                                                                                                                                                                                                                                        |
+| 41, 97, 197            | output gains — hearing                                                                                                                                                                                                                                                                                                                     |
+| 106, 107, 108          | MIDI routing                                                                                                                                                                                                                                                                                                                               |
 
 - **No confirmation, but a one-shot undo.** Asking before a gesture meant to be repeated ten times
   in a row would kill it. The first click randomises; immediately after, the button offers to go
@@ -1632,7 +1630,7 @@ checkbox` tree; this was verified.
   the panel. Verified to read as state rather than as noise.
 - **Ambiguous names are fixed by structure, not repetition.** `attack` and `waveform` exist in both
   harp and chord. **The plate is a `role="group"` labelled by its own heading**, announcing itself
-  once on entry, rather than lengthening 189 labels with "chord / envelope /". Verified to announce
+  once on entry, rather than lengthening 188 labels with "chord / envelope /". Verified to announce
   on entry, not per control.
 
 ### 12.6 The unequipped slot is `aria-disabled`, never `disabled`

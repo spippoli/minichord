@@ -10,6 +10,7 @@
  * panel does with it is the `ui/` layer's business.
  */
 
+import { BANK_COLOR_ADDRESS } from "./addresses";
 import {
   RAW_SECTION_KEYS,
   rawParameterFile,
@@ -68,9 +69,19 @@ export const byAddress: ReadonlyMap<number, Parameter> = new Map(
   parameters.map((parameter) => [parameter.address, parameter]),
 );
 
-/** The 189 parameters a panel may draw, in the order of the full list. */
+/**
+ * The 188 parameters a panel may draw, in the order of the full list.
+ *
+ * Two exclusions, and they have different reasons. The `hidden` group is the
+ * generator's own: six parameters emitted with `display: none`, five physical
+ * knobs and the firmware version. The **bank hue** is this app's: it is the
+ * bank's identity, read from the device and drawn as the bank LED in the strip,
+ * and there is nothing to offer a control over (SPEC.md 7.4).
+ */
 export const visibleParameters: readonly Parameter[] = parameters.filter(
-  (parameter) => parameter.group !== HIDDEN_GROUP,
+  (parameter) =>
+    parameter.group !== HIDDEN_GROUP &&
+    parameter.address !== BANK_COLOR_ADDRESS,
 );
 
 /**

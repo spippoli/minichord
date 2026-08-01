@@ -1,5 +1,5 @@
 /**
- * The fourteen addresses whose values have names (SPEC.md 8.6).
+ * The fourteen addresses whose values have names (SPEC.md 8.5).
  *
  * This is the one part of the taxonomy that is genuinely written by hand: a
  * range in `parameters.json` says a waveform is 0..11, and nothing in the file

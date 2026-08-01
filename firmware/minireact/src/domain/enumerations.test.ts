@@ -12,7 +12,7 @@ const waveformAddresses = [...ENUMERATIONS]
   .filter(([, labels]) => labels[0] === "sine")
   .map(([address]) => address);
 
-describe("the named enumerations (SPEC.md 8.6, A.8)", () => {
+describe("the named enumerations (SPEC.md 8.5, A.8)", () => {
   it("names exactly fourteen addresses", () => {
     expect(ENUMERATIONS.size).toBe(14);
   });
@@ -27,7 +27,7 @@ describe("the named enumerations (SPEC.md 8.6, A.8)", () => {
   });
 
   it("labels the twelve waveforms in wire order, at all eleven addresses", () => {
-    // SPEC.md 8.6: eleven of the fourteen carry a waveform.
+    // SPEC.md 8.5: eleven of the fourteen carry a waveform.
     expect(waveformAddresses).toHaveLength(11);
 
     for (const address of waveformAddresses) {

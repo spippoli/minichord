@@ -22,7 +22,7 @@ _Avoid_: slot, register, index
 
 **Parameter**:
 One record of `firmware/generator/parameters.json`, owning exactly one address, with a range, a
-curve, a default and a tooltip. There are 195, of which 189 are drawn as controls.
+curve, a default and a tooltip. There are 195, of which 188 are drawn as controls.
 _Avoid_: setting, field, property
 
 **Wire value**:
@@ -177,8 +177,9 @@ cream plastic with a positive one. They are two different objects sharing no tok
 _Avoid_: theme, skin, dark mode, palette, colour scheme
 
 **Bank hue**:
-The live value of address 20, the bank's identity. It reaches exactly one element, the bank LED in
-the strip, and never the moulding.
+The live value of address 20, the bank's identity. It is read from the device and never edited from
+the panel: it reaches exactly one element, the bank LED in the strip, and never the moulding and
+never a control.
 _Avoid_: accent colour, theme colour, brand colour
 
 ### The sequencer

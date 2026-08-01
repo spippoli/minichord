@@ -62,8 +62,8 @@ describe("the index by address", () => {
 });
 
 describe("the visible list", () => {
-  it("holds 189 entries", () => {
-    expect(visibleParameters).toHaveLength(189);
+  it("holds 188 entries", () => {
+    expect(visibleParameters).toHaveLength(188);
   });
 
   it("drops the six hidden parameters, which live at addresses 2..7", () => {
@@ -75,9 +75,15 @@ describe("the visible list", () => {
     expect(visibleParameters.some((p) => p.group === "hidden")).toBe(false);
   });
 
+  it("drops the bank hue, which is read from the device and never edited", () => {
+    expect(visibleParameters.some((p) => p.address === 20)).toBe(false);
+    // And it is still a parameter: the strip reads its value by address.
+    expect(byAddress.get(20)?.name).toBe("bank color");
+  });
+
   it("preserves the order of the full list", () => {
     expect(visibleParameters).toEqual(
-      parameters.filter((p) => p.group !== "hidden"),
+      parameters.filter((p) => p.group !== "hidden" && p.address !== 20),
     );
   });
 });

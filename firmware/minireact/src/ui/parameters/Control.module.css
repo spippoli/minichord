@@ -93,45 +93,6 @@
   box-shadow: 0 1px 2px var(--cap-shadow);
 }
 
-/*
- * `bank color` is the one parameter whose value *is* a colour (SPEC.md 8.5):
- * the slot carries the spectrum, the cap is filled with the chosen hue, and a
- * swatch at full saturation sits beside it — the panel may ignore the hue
- * everywhere but the strip, the device never does.
- */
-.spectrum::-webkit-slider-runnable-track {
-  height: 0.9rem;
-  border-color: var(--slot-track-edge);
-  border-radius: 0.45rem;
-  background: var(--spectrum);
-}
-
-.spectrum::-webkit-slider-thumb {
-  width: 0.85rem;
-  height: 0.85rem;
-  margin-top: 0;
-  border-color: var(--cap-edge);
-  border-radius: 50%;
-  background: var(--cap-tint);
-}
-
-.withSwatch {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.swatch {
-  flex: none;
-  width: 0.9rem;
-  height: 0.9rem;
-  border: 1px solid var(--led-bezel);
-  border-radius: 2px;
-  background: var(--cap-tint);
-}
-
 /* An interrupter, not a two-position fader (SPEC.md 8.1). */
 .rocker {
   display: flex;

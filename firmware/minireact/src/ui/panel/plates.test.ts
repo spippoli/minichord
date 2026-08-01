@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { byAddress } from "../../domain";
+import { BANK_COLOR_ADDRESS, byAddress } from "../../domain";
 import { matchesQuery, platesOf, sectionMatchCount } from "./plates";
 
 /** The table of SPEC.md 7.2, verbatim: the plates in order, with their counts. */
 const EXPECTED = {
   global: [
-    ["Settings", 10],
+    ["Settings", 9],
     ["MIDI", 3],
     ["Effects", 6],
     ["Potentiometer", 8],
@@ -49,12 +49,29 @@ describe("the plates of a section (SPEC.md 7.2)", () => {
   it("merges the two blocks of the global Settings group into one plate", () => {
     // `group` is not contiguous in the file: Settings appears as 6 parameters,
     // then MIDI, then 4 more Settings. The legacy generator draws it twice.
+    // One plate of 10 less the bank hue, which the panel never draws.
     const settings = platesOf("global").filter(
       (plate) => plate.group === "Settings",
     );
 
     expect(settings).toHaveLength(1);
-    expect(settings[0].parameters).toHaveLength(10);
+    expect(settings[0].parameters).toHaveLength(9);
+  });
+
+  it("draws no control for the bank hue, in any section", () => {
+    for (const section of ["global", "harp", "chord"] as const) {
+      for (const plate of platesOf(section)) {
+        expect(
+          plate.parameters.some((each) => each.address === BANK_COLOR_ADDRESS),
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("finds no bank hue in a search either", () => {
+    // The parameter is not drawn, so no query may surface it — search runs
+    // over the plates, which is what makes that true for free.
+    expect(sectionMatchCount("global", "bank color")).toBe(0);
   });
 
   it("never shows the hidden group", () => {

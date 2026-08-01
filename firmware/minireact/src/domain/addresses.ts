@@ -14,9 +14,9 @@ export const BANK_ADDRESS = 1;
 /**
  * The bank's hue, 0..360 — the one parameter whose value *is* a colour.
  *
- * It is named here because two places outside the panel need it: the fader
- * draws the spectrum in its own slot (SPEC.md 8.5), and the strip is the single
- * element the hue reaches (SPEC.md 7.4).
+ * It is read-only in this app: no control is drawn for it, and it is named here
+ * because one place needs it — the strip, the single element the hue reaches
+ * (SPEC.md 7.4). The panel excludes it from what it draws by the same name.
  */
 export const BANK_COLOR_ADDRESS = 20;
 
