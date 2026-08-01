@@ -170,7 +170,7 @@ export function Panel() {
         key and no new vocabulary. The way back is the dock's own.
       */}
       <a className={styles.skipLink} href={`#${dockId}`}>
-        Skip to the edit buffer
+        Skip to the dock
       </a>
 
       <div className={styles.chrome}>

@@ -1826,8 +1826,8 @@ once on entry (§12.5).
 | fold controls              | Fold all · Open all                                                                                                                                      |
 | randomise button           | Randomise · after a click, Undo randomise                                                                                                                |
 | `weirdness` control label  | weirdness                                                                                                                                                |
-| skip link                  | Skip to the edit buffer · Back to the panel                                                                                                              |
-| dock heading               | Edit buffer                                                                                                                                              |
+| skip link                  | Skip to the dock · Back to the panel                                                                                                                     |
+| dock heading               | Dock                                                                                                                                                     |
 | dock, empty                | Nothing changed since this bank was loaded.                                                                                                              |
 | dock row                   | `{name}` · `{stored} → {current}` · Revert                                                                                                               |
 | dock, revert everything    | Revert all                                                                                                                                               |

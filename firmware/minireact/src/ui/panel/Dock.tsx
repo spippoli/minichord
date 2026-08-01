@@ -101,7 +101,7 @@ export function Dock({
     >
       <div className={styles.dockChrome}>
         <h2 id={headingId} className={styles.dockHeading}>
-          Edit buffer
+          Dock
         </h2>
 
         {edited.length > 0 && (
